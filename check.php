@@ -4,10 +4,9 @@ require_once("common.php");
 require_once("config.php");
 
 
-
 $result = $db->query("SELECT id, youtube_id, title, author, date_added, date_updated, 
 	round(strftime('%J', datetime('now'))-strftime('%J', date_added), 2) as age
-	FROM videos", SQLITE_ASSOC, $query_error); 
+	FROM videos WHERE removed=0", SQLITE_ASSOC, $query_error); 
 if ($query_error)
     die("Error: $query_error"); 
     
@@ -23,7 +22,7 @@ while ($row = $result->fetch(SQLITE_ASSOC))
     $content = trim($webpage['content']);
     
     $sql=sprintf("UPDATE videos SET date_updated=DATETIME('now') WHERE youtube_id='%s'", 
-    		sqlite_escape_string($row['youtube_id']) );
+    		addslashes($row['youtube_id']) );
     	if (!$db->queryExec($sql, $error))
     		die("Error: $error");
     
@@ -36,7 +35,7 @@ while ($row = $result->fetch(SQLITE_ASSOC))
 			if(unlink(sprintf("{$cache_dir}/%s.mp4", $row['youtube_id'])))
 			{
 				$sql=sprintf("DELETE FROM videos WHERE youtube_id='%s'", 
-					sqlite_escape_string($row['youtube_id']) );
+					addslashes($row['youtube_id']) );
 				if (!$db->queryExec($sql, $error))
 					die("Error: $error");
 			}
@@ -50,7 +49,7 @@ while ($row = $result->fetch(SQLITE_ASSOC))
     {
     	print "Status: {$row['youtube_id']} has been removed!\n";
     	$sql=sprintf("UPDATE videos SET removed=1 WHERE youtube_id='%s'", 
-    		sqlite_escape_string($row['youtube_id']) );
+    		addslashes($row['youtube_id']) );
     	if (!$db->queryExec($sql, $error))
     		die("Error: $error");
     } 
