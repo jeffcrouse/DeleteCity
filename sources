@@ -1,0 +1,6 @@
+http://gdata.youtube.com/feeds/api/videos?q=slow+loris
+http://gdata.youtube.com/feeds/api/videos?q=football+-soccer
+http://gdata.youtube.com/feeds/api/standardfeeds/top_rated
+http://gdata.youtube.com/feeds/api/standardfeeds/most_viewed
+http://gdata.youtube.com/feeds/api/standardfeeds/most_discussed
+http://gdata.youtube.com/feeds/api/standardfeeds/most_recent
