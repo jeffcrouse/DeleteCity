@@ -44,7 +44,7 @@ foreach($urls as $url)
 		print "Status: Downloading \"$title\" ($youtube_id)\n";
 		
 		// http://rg3.github.com/youtube-dl/documentation.html#d6
-		`./youtube-dl.py --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=50k $vid_url`;
+		`youtube-dl/youtube-dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=50k $vid_url`;
 		
 		if(file_exists("{$cache_dir}/{$youtube_id}.mp4"))
 		{
