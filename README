@@ -38,8 +38,7 @@ IMPORTANT FOLDERS AND FILES
 =========================
 
 sources
-This file contains all of the feed URLS (one per line) that will be used to find the videos to download.  Check out this page for more information about forming feed URLS: http://code.google.com/apis/youtube/2.0/reference.html#Searching_for_videos
-
+This file contains feed URLS (one per line) that will be used to find the videos to download.  Check out this page for more information about forming feed URLS: http://code.google.com/apis/youtube/2.0/reference.html#Searching_for_videos
 
 runcache.php 
 This script will download videos into the $cache_dir.  eg: ./runcache.php
@@ -79,3 +78,9 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 3. Make a schedule.php, or something to deal with scheduling the scripts to run automatically.
 
 4. Have a reverse lookup that will loop through all of the videos in the cache dir, get the info from the YT API and put it in the database.  For orphaned videos.
+
+5. Save video description, and other attributed of the video from the feed.
+
+6. Option to automatically email the video author to ask why the video was taken down :)
+
+7. in runcache.php, Gather all URLs before downloading so that you can provide an accurate progress meter.
