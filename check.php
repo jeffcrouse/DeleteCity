@@ -22,7 +22,7 @@ while ($row = $result->fetch(SQLITE_ASSOC))
     $content = trim($webpage['content']);
     
     $sql=sprintf("UPDATE videos SET date_updated=DATETIME('now') WHERE youtube_id='%s'", 
-    		addslashes($row['youtube_id']) );
+    		sqlite_escape_string($row['youtube_id']) );
     	if (!$db->queryExec($sql, $error))
     		die("Error: $error");
     
@@ -35,7 +35,7 @@ while ($row = $result->fetch(SQLITE_ASSOC))
 			if(unlink(sprintf("{$cache_dir}/%s.mp4", $row['youtube_id'])))
 			{
 				$sql=sprintf("DELETE FROM videos WHERE youtube_id='%s'", 
-					addslashes($row['youtube_id']) );
+					sqlite_escape_string($row['youtube_id']) );
 				if (!$db->queryExec($sql, $error))
 					die("Error: $error");
 			}
@@ -49,7 +49,7 @@ while ($row = $result->fetch(SQLITE_ASSOC))
     {
     	print "Status: {$row['youtube_id']} has been removed!\n";
     	$sql=sprintf("UPDATE videos SET removed=1 WHERE youtube_id='%s'", 
-    		addslashes($row['youtube_id']) );
+    		sqlite_escape_string($row['youtube_id']) );
     	if (!$db->queryExec($sql, $error))
     		die("Error: $error");
     } 

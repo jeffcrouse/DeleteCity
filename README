@@ -60,9 +60,10 @@ Some configuration options.  Most of them are commented and should be pretty sel
 OTHER FILES
 ========================
 
-youtube-dl.py
+youtube-dl
 This is a 3rd party script for downloading YouTube videos. You probably shouldn't use this directly - it is called from the other scripts.  You can find out more about it here:  http://rg3.github.com/youtube-dl/
 
+NOTE:  If you are getting this from Github, make sure to properly initialize this submodule
 
 
 TO DO
@@ -76,3 +77,5 @@ http://www.youtube.com/watch?v=JdGJxI6LrX4				removed by user
 http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 3. Make a schedule.php, or something to deal with scheduling the scripts to run automatically.
+
+4. Have a reverse lookup that will loop through all of the videos in the cache dir, get the info from the YT API and put it in the database.  For orphaned videos.

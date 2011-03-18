@@ -44,16 +44,16 @@ foreach($urls as $url)
 		print "Status: Downloading \"$title\" ($youtube_id)\n";
 		
 		// http://rg3.github.com/youtube-dl/documentation.html#d6
-		`youtube-dl/youtube-dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=50k $vid_url`;
+		`youtube-dl/youtube-dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
 		
 		if(file_exists("{$cache_dir}/{$youtube_id}.mp4"))
 		{
 			print "Status: Adding \"$title\" ({$youtube_id}) to database\n";
 			$sql=sprintf("INSERT INTO videos (youtube_id, title, author, date_added, date_updated) 
 				VALUES ('%s', '%s', '%s', DATETIME('now'), DATETIME('now'))",
-				addslashes($youtube_id),
-				addslashes($title),
-				addslashes($author)
+				sqlite_escape_string($youtube_id),
+				sqlite_escape_string($title),
+				sqlite_escape_string($author)
 			);
 			$db->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)
