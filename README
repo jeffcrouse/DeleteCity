@@ -86,3 +86,5 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 7. in runcache.php, Gather all URLs before downloading so that you can provide an accurate progress meter.
 
 8. Batch query in check.php?
+
+9. If an orphan file is encountered that has been removed from YouTube, it will never get inserted into the database because we can't fetch info for it.  Need a better solution for this, or maybe it is just unavoidable.  Maybe the solution is to just save http://gdata.youtube.com/feeds/api/videos/{$this->youtube_id} as an XML file in the cache directory?  That is a lot of redundant information: you have stuff in the database and in the XML files.  

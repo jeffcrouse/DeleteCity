@@ -4,15 +4,15 @@ require_once("common.php");
 require_once("config.php");
 require_once("Video.class.php");
 
-// Check for orphans
+// Check for files in the cache dir that don't have an entry in the database.
+// This could happen if the database is deleted or something.
 print "\n\nStatus: Checking for orphans\n\n";
-
 $dhandle = opendir($cache_dir);
 if ($dhandle)
 {
 	while (false !== ($fname = readdir($dhandle)))
 	{
-		if ($fname != '.' && $fname != '..' && !is_dir( "./$fname" ) && !strpos($fname, ".part") && $fname!="README")
+		if ($fname!='.' && $fname!='..' && !is_dir("./$fname") && !strpos($fname,".part") && $fname!="README")
 		{
 			$youtube_id = strstr(basename($fname), ".", true);
 			if(!empty($youtube_id))
@@ -28,7 +28,7 @@ if ($dhandle)
 					}
 					else 
 					{
-						print "Error: Couldn't fetch info for $youtube_id\n";
+						print "Error: Couldn't fetch info for $youtube_id.  Skipping\n";
 					}
 				}
 			}
@@ -38,8 +38,9 @@ if ($dhandle)
 }
 
 
-print "\n\nStatus: Checking for removed videos\n\n";
 
+// Now loop through every video where removed=0 and check to see if it still exists on YouTube
+print "\n\nStatus: Checking for removed videos\n\n";
 
 $result = $db->query("SELECT youtube_id FROM videos WHERE removed=0", SQLITE_ASSOC, $query_error); 
 if ($query_error)
@@ -48,7 +49,6 @@ if ($query_error)
 if (!$result)
     die("Error: Impossible to execute query.");
 
-print $result->numRows()." results\n";
 
 $total = $result->numRows();
 $i=1;
