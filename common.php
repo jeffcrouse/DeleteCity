@@ -16,7 +16,7 @@ if (!$q)
 {
 	$db->queryExec("CREATE TABLE videos (
 		id 				INTEGER PRIMARY KEY NULL, 
-		youtube_id		VarChar NULL,
+		youtube_id		VarChar NULL UNIQUE,
 		title 			CHAR(255) NULL,
 		author			CHAR(255) NULL,
 		date_added 		DATETIME NOT NULL,

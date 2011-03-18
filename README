@@ -84,3 +84,5 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 6. Option to automatically email the video author to ask why the video was taken down :)
 
 7. in runcache.php, Gather all URLs before downloading so that you can provide an accurate progress meter.
+
+8. Batch query in check.php?

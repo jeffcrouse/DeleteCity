@@ -1,7 +1,7 @@
 <?php
 
 // Videos will be deleted after 'max_age' days
-$max_age = 2;
+$max_age = 3;
 
 // The directory where the videos are stored
 $cache_dir = "cache";
