@@ -2,8 +2,8 @@
 /*
 Plugin Name: Delete City
 Plugin URI: http://URI_Of_Page_Describing_Plugin_and_Updates
-Description: A brief description of the Plugin.
-Version: The Plugin's Version Number, e.g.: 1.0
+Description: DeleteCity saves videos from YouTube deletion
+Version: 0.1
 Author: Jeff Crouse
 Author URI: http://jeffcrouse.info
 License: GPL2
@@ -24,22 +24,27 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-
-$logfile =  dirname(__FILE__)."/deletecity.log";
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('error_log', $logfile);
 
 
 // --------------------------------------------------------------------------
 // ACTIVATION
 register_activation_hook( __FILE__, 'deletecity_activate');
 function deletecity_activate()
-{
-	global $logfile;
+{	
+	$logfile =  dirname(__FILE__)."/deletecity.log";
+	$fh = fopen($logfile, 'a');
 	
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
-		$fh = fopen($logfile, 'a');
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Activating Plugin HOURLY\n");
-		wp_schedule_event( time(), 'hourly', 'runcache_function_hook' );
+		wp_schedule_event(time(), 'hourly', 'runcache_function_hook' );
+	}
+	else
+	{
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Caching event already present\n");
 	}
 }
 
@@ -49,15 +54,39 @@ function deletecity_activate()
 register_deactivation_hook( __FILE__, 'deletecity_deactivate' );
 function deletecity_deactivate()
 {
-	global $logfile;
+	$logfile =  dirname(__FILE__)."/deletecity.log";
+	$fh = fopen($logfile, 'a');
 	
-	// Kill all running caching processes
-	`ps -ef | grep runcache | grep -v grep | awk '{print $2}' | xargs kill -9 >> $logfile`;
+	// Kill the runcache process if it is running.
+	$pid_file = dirname(__FILE__)."/runcache.php.pid";
+	if(file_exists($pid_file))
+	{
+		$pid = (int)trim(file_get_contents($pid_file));
+  		if(posix_kill($pid, 0)) // see if process is running
+  		{
+  			posix_kill($pid, 9);
+			$error = posix_get_last_error();
+			if($error==0)
+			{
+				fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Killed process $pid\n");
+			}
+			else
+			{
+				fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Warning: Couldn't kill caching process ($pid).\n");
+				fwrite($fb, posix_strerror($error));
+			}
+  		}
+  		else
+  		{
+  			fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Caching process ($pid) is not running.\n");
+  		}
+	}
+
+	//`ps -ef | grep runcache | grep -v grep | awk '{print $2}' | xargs kill -9`;
 	
 	// Unregister the scheduled event
 	if($timestamp = wp_next_scheduled('runcache_function_hook'))
 	{
-		$fh = fopen($logfile, 'a');
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Deactivating Plugin\n");
 		wp_unschedule_event($timestamp, 'runcache_function_hook' );
 	}
@@ -69,21 +98,12 @@ function deletecity_deactivate()
 add_action( 'runcache_function_hook', 'runcache' );
 function runcache()
 {
-	global $logfile;	
+	$logfile =  dirname(__FILE__)."/deletecity.log";
 	$fh = fopen($logfile, 'a');
-	
-	$pid = new pid(dirname(__FILE__));
-	if($pid->already_running)
-	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." runcache is already running.\n");
-		exit;
-	}
-	else
-	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Starting runcache\n");
-		$script = dirname(__FILE__)."/runcache.php";
-		$logfile = dirname(__FILE__)."/deletecity.log";
-		`$script >> $logfile 2>&1 &`;
-	}
+	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Starting runcache\n");
+	$script = dirname(__FILE__)."/runcache.php";
+	$logfile = dirname(__FILE__)."/deletecity.log";
+	`$script >> $logfile 2>&1 &`;
 }
+
 ?>

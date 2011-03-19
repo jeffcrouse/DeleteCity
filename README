@@ -39,7 +39,7 @@ REQUIREMENTS
 
 *nix only!  I use a bunch of system commands that I don't know how to translate into Windows.  I'd love someone to help me, though!
 
-PHP >= 5 (may be compatible with PHP4, according to http://phpduck.com/minimum-php-version-script/)
+PHP >= 5.1 (may be compatible with PHP4, according to http://phpduck.com/minimum-php-version-script/)
 Python >= 2.5
 
 
@@ -71,28 +71,23 @@ NOTE:  If you are getting this from Github, make sure to properly initialize thi
 
 TO DO
 =========================
-1. add proxy.conf -- a list of proxies to use randomly IF youtube-dl starts returning errors
 
-2. Testing if video had been removed: testing for presence of <?xml in response probably isn't good enough.  Here are some removed videos to test with.
+-- add proxy.conf -- a list of proxies to use randomly IF youtube-dl starts returning errors
+
+-- Testing if video had been removed: testing for presence of <?xml in response probably isn't good enough.  Here are some removed videos to test with.
 http://www.youtube.com/watch?v=eouvTRd6szQ 				account terminated
 http://www.youtube.com/watch?v=PgEo_7rMH0Q				account terminated
 http://www.youtube.com/watch?v=JdGJxI6LrX4				removed by user
 http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
-3. Make a schedule.php, or something to deal with scheduling the scripts to run automatically.
+-- Save video description, and other attributed of the video from the feed.
 
-4. Save video description, and other attributed of the video from the feed.
+-- Option to automatically email the video author to ask why the video was taken down :)
 
-5. Option to automatically email the video author to ask why the video was taken down :)
+-- Batch query in check.php?
 
-6. Batch query in check.php?
+-- low priority: If an orphan file is encountered that has been removed from YouTube, it will never get inserted into the database because we can't fetch info for it.  Need a better solution for this, or maybe it is just unavoidable.  Maybe the solution is to just save http://gdata.youtube.com/feeds/api/videos/{$this->youtube_id} as an XML file in the cache directory?  That is a lot of redundant information: you have stuff in the database and in the XML files.  
 
-7. If an orphan file is encountered that has been removed from YouTube, it will never get inserted into the database because we can't fetch info for it.  Need a better solution for this, or maybe it is just unavoidable.  Maybe the solution is to just save http://gdata.youtube.com/feeds/api/videos/{$this->youtube_id} as an XML file in the cache directory?  That is a lot of redundant information: you have stuff in the database and in the XML files.  
+-- Catch exceptions from Video class
 
-8. Check should make an RSS feed.
-
-9. Wordpress plugin shouldn't run cache if it is already running.
-
-10. Catch exceptions from Video class
-
-11. Clean up runcache -- it's messy!
+-- Clean up runcache -- it's messy!

@@ -7,7 +7,7 @@ class pid
     function __construct($directory)
     {   
         $this->filename = $directory . '/' . basename($_SERVER['PHP_SELF']) . '.pid';
-       
+
         if(is_writable($this->filename) || is_writable($directory))
         {   
             if(file_exists($this->filename))
@@ -35,6 +35,7 @@ class pid
     {
         if(!$this->already_running && file_exists($this->filename) && is_writeable($this->filename))
         {
+        	print "[pid] Deleting lockfile\n";
             unlink($this->filename);
         }
     }

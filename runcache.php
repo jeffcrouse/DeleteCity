@@ -3,7 +3,9 @@
 require_once("common.php");
 require_once("config.php");
 require_once("Video.class.php");
+require_once("pid.class.php");
 libxml_use_internal_errors(true);
+
 
 $start_time = time();
 print "Status: Cache starting at " . date("F j, Y, g:i a") . "\n\n";
@@ -15,6 +17,13 @@ print "Status: Cache starting at " . date("F j, Y, g:i a") . "\n\n";
 *	SANITY CHECKS
 *
 *******************************/
+
+$pid = new pid( dirname(__FILE__) );
+if($pid->already_running)
+{
+	print "Error: runcache is already running.\n";
+	exit;
+}
 
 if(!file_exists($youtube_dl))
 {
@@ -115,7 +124,7 @@ foreach($urls as $url)
 			}
 			else
 			{
-				print "\tError: [$i/$num_vids] File was not successfully downloaded.  Not adding to database.";
+				print "\tError: [$i/$num_vids] File was not successfully downloaded.  Not adding to database.\n";
 			}
 		}
 		$i++;
