@@ -23,34 +23,73 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
-
+require_once("common.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('error_log', $logfile);
 
+// --------------------------------------------------------------------------
+// DEFINE SOME FREQUENCIES
+/*
+Array
+(
+    [hourly] => Array
+        (
+            [interval] => 3600
+            [display] => Once Hourly
+        )
+ 
+    [twicedaily] => Array
+        (
+            [interval] => 43200
+            [display] => Twice Daily
+        )
+ 
+    [daily] => Array
+        (
+            [interval] => 86400
+            [display] => Once Daily
+        )
+ 
+)
+*/
+add_filter('cron_schedules', 'deletecity_cron_definer');    
+function deletecity_cron_definer($schedules)
+{
+  $schedules['weekly'] = array(
+      'interval'=> 60*60*24*7,
+      'display'=>  __('Once Every 30 Days')
+  );
+  return $schedules;
+}
+
 
 // --------------------------------------------------------------------------
-// ACTIVATION
+// ACTIVATION - Add caching and posting events
 register_activation_hook( __FILE__, 'deletecity_activate');
 function deletecity_activate()
 {	
 	$logfile =  dirname(__FILE__)."/deletecity.log";
 	$fh = fopen($logfile, 'a');
 	
+	// Add the two events to th eschedule
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Activating Plugin HOURLY\n");
-		wp_schedule_event(time(), 'hourly', 'runcache_function_hook' );
-	}
-	else
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding caching event to schedule\n");
+		wp_schedule_event(time(), 'twicedaily', 'runcache_function_hook' );
+	}	
+	
+	if (!wp_next_scheduled('make_post_function_hook'))
 	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Caching event already present\n");
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posting event to schedule\n");
+		wp_schedule_event(time(), 'weekly', 'make_post_function_hook' );
 	}
 }
 
 
 // --------------------------------------------------------------------------
-// DEACTIVATION
+// DEACTIVATION - remove caching and posting events.  
+// Also kill caching process if it is running
 register_deactivation_hook( __FILE__, 'deletecity_deactivate' );
 function deletecity_deactivate()
 {
@@ -84,11 +123,16 @@ function deletecity_deactivate()
 
 	//`ps -ef | grep runcache | grep -v grep | awk '{print $2}' | xargs kill -9`;
 	
-	// Unregister the scheduled event
+	// Unregister the scheduled events
 	if($timestamp = wp_next_scheduled('runcache_function_hook'))
 	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Deactivating Plugin\n");
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Removing caching event from schedule\n");
 		wp_unschedule_event($timestamp, 'runcache_function_hook' );
+	}
+	if($timestamp = wp_next_scheduled('make_post_function_hook'))
+	{
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Removing posting event from schedule\n");
+		wp_unschedule_event($timestamp, 'make_post_function_hook' );
 	}
 }
 
@@ -106,4 +150,50 @@ function runcache()
 	`$script >> $logfile 2>&1 &`;
 }
 
+
+// --------------------------------------------------------------------------
+// POSTING EVENT
+add_action( 'make_post_function_hook', 'post_removed_videos' );
+function post_removed_videos()
+{
+	$logfile =  dirname(__FILE__)."/deletecity.log";
+	$fh = fopen($logfile, 'a');
+	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posts of removed videos\n");
+	
+	$sql = "SELECT id, youtube_id, title, author, date_added, date_updated, removed,
+		round(strftime('%J', datetime('now'))-strftime('%J', date_added), 2) as age
+		FROM videos WHERE removed > 0";
+	
+	$result = $db->query($sql, SQLITE_ASSOC, $query_error); 
+	if ($query_error)
+		die("Error: $query_error"); 
+		
+	if (!$result)
+		die("Impossible to execute query.");
+	
+	if($result->numRows()<1)
+	{
+		return;
+	}
+	
+	$content = "";
+	while ($row = $result->fetch(SQLITE_ASSOC))
+	{ 
+		$url = "http://www.youtube.com/watch?v={$row['youtube_id']}";
+		$content .= $url."<br />";
+	}
+	
+	// Create post object
+	$title = 'Removed Videos of '.date("F j, Y, g:i a");
+	$my_post = array(
+		'post_title' => $title,
+		'post_content' => $content,
+		'post_status' => 'publish',
+		'post_author' => 1,
+		'post_category' => array(8,39)
+	);
+	
+	// Insert the post into the database
+	wp_insert_post( $my_post );
+}
 ?>
