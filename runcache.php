@@ -5,13 +5,13 @@ require_once("config.php");
 require_once("Video.class.php");
 
 $start_time = time();
-print "\n\n[deletecity] starting at " . date("F j, Y, g:i a") . "\n\n";
+print "[deletecity] starting at " . date("F j, Y, g:i a") . "\n\n";
 
 
 // Load in the URLs from the 'sources' file
-$urls = file("sources", FILE_SKIP_EMPTY_LINES);
+if(!$urls = file($sources_file, FILE_SKIP_EMPTY_LINES))
 {
-	print "Error: Couldn't open sources\n";
+	print "Error: Couldn't open $sources_file\n";
 	exit;
 }
 
@@ -23,7 +23,7 @@ foreach($urls as $url)
 	// Parse a feed file
 	$xmlstr = get_web_page( $url );
 	$xmldoc = new SimpleXMLElement( $xmlstr['content'] );
-	
+		
 	// Check to make sure this is a valid YouTube feed
 	// maybe some XPaths to make sure the status is OK and that it has entries, etc.
 	
@@ -42,7 +42,7 @@ foreach($urls as $url)
 			print "\tStatus: [$i/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
 			
 			// http://rg3.github.com/youtube-dl/documentation.html#d6
-			`youtube-dl/youtube-dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
+			`$youtube_dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
 		}
 		
 		
