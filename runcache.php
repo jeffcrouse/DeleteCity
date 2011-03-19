@@ -2,6 +2,7 @@
 <?php
 require_once("common.php");
 require_once("config.php");
+require_once("Video.class.php");
 
 // Load in the URLs from the 'sources' file
 $urls = file("sources", FILE_SKIP_EMPTY_LINES);
@@ -16,7 +17,8 @@ foreach($urls as $url)
 	$xmldoc = new SimpleXMLElement( $xmlstr['content'] );
 	
 	$num_vids = count($xmldoc->entry);
-	foreach($xmldoc->entry as $i => $entry)
+	$i=1;
+	foreach($xmldoc->entry as $entry)
 	{
 		$vid_url = $entry->link[0]['href'];				// TO DO:  We can't be sure that the href is element 0
 		preg_match("/v=([^&]+)/", $vid_url, $matches);
@@ -26,7 +28,7 @@ foreach($urls as $url)
 		// If we need to download the video, do it!
 		if(!file_exists($video->vid_path))
 		{
-			print "\tStatus: [$i/$num_vids] Downloading \"$title\" ($youtube_id)\n";
+			print "\tStatus: [$i/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
 			
 			// http://rg3.github.com/youtube-dl/documentation.html#d6
 			`youtube-dl/youtube-dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
@@ -38,7 +40,7 @@ foreach($urls as $url)
 		{
 			if(file_exists($video->vid_path))
 			{
-				print "\tStatus: [$i/$num_vids] Adding \"$title\" ({$youtube_id}) to database\n";
+				print "\tStatus: [$i/$num_vids] Adding \"{$entry->title}\" ({$video->youtube_id}) to database\n";
 				$video->title = $entry->title;
 				$video->author = $entry->author->name;
 				$video->save();
@@ -48,6 +50,7 @@ foreach($urls as $url)
 				print "\tError: [$i/$num_vids] File was not successfully downloaded.  Not adding to database.";
 			}
 		}
+		$i++;
 	}
 }
 ?>

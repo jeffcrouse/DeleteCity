@@ -77,14 +77,12 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 3. Make a schedule.php, or something to deal with scheduling the scripts to run automatically.
 
-4. Have a reverse lookup that will loop through all of the videos in the cache dir, get the info from the YT API and put it in the database.  For orphaned videos.
+4. Save video description, and other attributed of the video from the feed.
 
-5. Save video description, and other attributed of the video from the feed.
+5. Option to automatically email the video author to ask why the video was taken down :)
 
-6. Option to automatically email the video author to ask why the video was taken down :)
+6. Batch query in check.php?
 
-7. in runcache.php, Gather all URLs before downloading so that you can provide an accurate progress meter.
+7. If an orphan file is encountered that has been removed from YouTube, it will never get inserted into the database because we can't fetch info for it.  Need a better solution for this, or maybe it is just unavoidable.  Maybe the solution is to just save http://gdata.youtube.com/feeds/api/videos/{$this->youtube_id} as an XML file in the cache directory?  That is a lot of redundant information: you have stuff in the database and in the XML files.  
 
-8. Batch query in check.php?
-
-9. If an orphan file is encountered that has been removed from YouTube, it will never get inserted into the database because we can't fetch info for it.  Need a better solution for this, or maybe it is just unavoidable.  Maybe the solution is to just save http://gdata.youtube.com/feeds/api/videos/{$this->youtube_id} as an XML file in the cache directory?  That is a lot of redundant information: you have stuff in the database and in the XML files.  
+8. Check should make an RSS feed.
