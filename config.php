@@ -1,5 +1,7 @@
 <?php
 
+date_default_timezone_set('America/New_York');
+
 // Videos will be deleted after 'max_age' days
 $max_age = 3;
 

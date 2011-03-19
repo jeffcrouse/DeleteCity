@@ -27,16 +27,17 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 
 $logfile =  dirname(__FILE__)."/deletecity.log";
 
+
 // --------------------------------------------------------------------------
 // ACTIVATION
 register_activation_hook( __FILE__, 'deletecity_activate');
 function deletecity_activate()
 {
 	global $logfile;
-	$fh = fopen($logfile, 'a');
 	
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
+		$fh = fopen($logfile, 'a');
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Activating Plugin HOURLY\n");
 		wp_schedule_event( time(), 'hourly', 'runcache_function_hook' );
 	}
@@ -49,10 +50,14 @@ register_deactivation_hook( __FILE__, 'deletecity_deactivate' );
 function deletecity_deactivate()
 {
 	global $logfile;
-	$fh = fopen($logfile, 'a');
 	
+	// Kill all running caching processes
+	`ps -ef | grep runcache | grep -v grep | awk '{print $2}' | xargs kill -9 >> $logfile`;
+	
+	// Unregister the scheduled event
 	if($timestamp = wp_next_scheduled('runcache_function_hook'))
 	{
+		$fh = fopen($logfile, 'a');
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Deactivating Plugin\n");
 		wp_unschedule_event($timestamp, 'runcache_function_hook' );
 	}
@@ -64,12 +69,21 @@ function deletecity_deactivate()
 add_action( 'runcache_function_hook', 'runcache' );
 function runcache()
 {
-	global $logfile;
+	global $logfile;	
 	$fh = fopen($logfile, 'a');
 	
-	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." runcache\n");
-	$script = dirname(__FILE__)."/runcache.php";
-	$logfile = dirname(__FILE__)."/deletecity.log";
-	`$script >> $logfile 2>&1 &`;
+	$pid = new pid(dirname(__FILE__));
+	if($pid->already_running)
+	{
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." runcache is already running.\n");
+		exit;
+	}
+	else
+	{
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Starting runcache\n");
+		$script = dirname(__FILE__)."/runcache.php";
+		$logfile = dirname(__FILE__)."/deletecity.log";
+		`$script >> $logfile 2>&1 &`;
+	}
 }
 ?>

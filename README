@@ -19,7 +19,6 @@ General Public License for more details.
 INTRODUCTION
 =========================
 
-WARNING: DeleteCity will eventually be a Wordpress plugin, but it is in progress.  For now it is a bunch of command line PHP scripts that you have to run manually.  See "IMPORTANT FOLDERS AND FILES" for more info.
 
 Delete City uses the ridiculous storage allotment of web hosting services like Dreamhost to cache large amounts of user generated content from sites like YouTube, Flickr, Facebook, etc. and then monitors to see if any of this content is subsequently taken down. When it finds removed content, it automatically posts the content to your WordPress blog. The nature of the content can be customized by the user by site, keyword, and other criteria. Devious? Maybe. But also one step in the fight against censorship.
 
@@ -38,6 +37,8 @@ git clone --recursive https://github.com/jefftimesten/DeleteCity.git
 REQUIREMENTS
 =========================
 
+*nix only!  I use a bunch of system commands that I don't know how to translate into Windows.  I'd love someone to help me, though!
+
 PHP >= 5 (may be compatible with PHP4, according to http://phpduck.com/minimum-php-version-script/)
 Python >= 2.5
 
@@ -45,20 +46,15 @@ Python >= 2.5
 IMPORTANT FOLDERS AND FILES
 =========================
 
+deletecity.php
+The Wordpress plugin
+
 sources
 This file contains feed URLS (one per line) that will be used to find the videos to download.  Check out this page for more information about forming feed URLS: http://code.google.com/apis/youtube/2.0/reference.html#Searching_for_videos
 
 runcache.php 
 This script will download videos into the $cache_dir.  eg: ./runcache.php
 eg: ./runcache.php
-
-check.php
-This script will check all of the videos that you have downloaded to see if any of them have been taken down. It will mark them as 'removed' if they have been taken down.  It will also delete any videos older than $max_age.
-eg: ./check.php
-
-list.php
-This will list all of the videos in your cache.  you can also call it with --removed to just see the videos that have been taken down.
-eg: ./list.php --removed
 
 config.php
 Some configuration options.  Most of them are commented and should be pretty self explainatory.  
@@ -94,3 +90,9 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 7. If an orphan file is encountered that has been removed from YouTube, it will never get inserted into the database because we can't fetch info for it.  Need a better solution for this, or maybe it is just unavoidable.  Maybe the solution is to just save http://gdata.youtube.com/feeds/api/videos/{$this->youtube_id} as an XML file in the cache directory?  That is a lot of redundant information: you have stuff in the database and in the XML files.  
 
 8. Check should make an RSS feed.
+
+9. Wordpress plugin shouldn't run cache if it is already running.
+
+10. Catch exceptions from Video class
+
+11. Clean up runcache -- it's messy!
