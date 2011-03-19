@@ -10,6 +10,10 @@ print "\n\n[deletecity] starting at " . date("F j, Y, g:i a") . "\n\n";
 
 // Load in the URLs from the 'sources' file
 $urls = file("sources", FILE_SKIP_EMPTY_LINES);
+{
+	print "Error: Couldn't open sources\n";
+	exit;
+}
 
 // Loop through all of the URLs from the 'sources' file
 foreach($urls as $url)
@@ -19,6 +23,9 @@ foreach($urls as $url)
 	// Parse a feed file
 	$xmlstr = get_web_page( $url );
 	$xmldoc = new SimpleXMLElement( $xmlstr['content'] );
+	
+	// Check to make sure this is a valid YouTube feed
+	// maybe some XPaths to make sure the status is OK and that it has entries, etc.
 	
 	$num_vids = count($xmldoc->entry);
 	$i=1;
