@@ -58,7 +58,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 
 	if($video->check_remote())
 	{
-		print "Status: [$i/$total] {$row['youtube_id']} still exists\n";
+		print "Status: [$i/$total] {$row['youtube_id']} still exists.  Age={$video->age}\n";
 		$video->mark_as_updated();
 		
 		if($video->age > $max_age)

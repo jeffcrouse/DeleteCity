@@ -4,6 +4,10 @@ require_once("common.php");
 require_once("config.php");
 require_once("Video.class.php");
 
+$start_time = time();
+print "\n\n[deletecity] starting at " . date("F j, Y, g:i a") . "\n\n";
+
+
 // Load in the URLs from the 'sources' file
 $urls = file("sources", FILE_SKIP_EMPTY_LINES);
 
@@ -53,4 +57,8 @@ foreach($urls as $url)
 		$i++;
 	}
 }
+
+$elapsed_time = time() - $start_time;
+$minutes = $elapsed_time / 60.0;
+print "[deletecity] elapsed time: {$minutes} minutes\n\n";
 ?>
