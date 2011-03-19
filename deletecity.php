@@ -25,16 +25,19 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 */
 
 
+$logfile =  dirname(__FILE__)."/deletecity.log";
+
 // --------------------------------------------------------------------------
 // ACTIVATION
-register_activation_hook( __FILE__ 'deletecity_activate');
+register_activation_hook( __FILE__, 'deletecity_activate');
 function deletecity_activate()
 {
+	global $logfile;
+	$fh = fopen($logfile, 'a');
+	
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
-		
-		$fh = fopen("deletecity.log", 'a');
-		fwrite($fh, "\n\n[deletecity] ".date("F j, Y, g:i a")." Activating Plugin HOURLY\n\n");
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Activating Plugin HOURLY\n");
 		wp_schedule_event( time(), 'hourly', 'runcache_function_hook' );
 	}
 }
@@ -45,10 +48,12 @@ function deletecity_activate()
 register_deactivation_hook( __FILE__, 'deletecity_deactivate' );
 function deletecity_deactivate()
 {
-	if($timestamp = wp_next_scheduled( 'runcache_function_hook' ))
+	global $logfile;
+	$fh = fopen($logfile, 'a');
+	
+	if($timestamp = wp_next_scheduled('runcache_function_hook'))
 	{
-		$fh = fopen("deletecity.log", 'a');
-		fwrite($fh, "\n\n[deletecity] ".date("F j, Y, g:i a")." Deactivating Plugin\n\n");
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Deactivating Plugin\n");
 		wp_unschedule_event($timestamp, 'runcache_function_hook' );
 	}
 }
@@ -59,7 +64,12 @@ function deletecity_deactivate()
 add_action( 'runcache_function_hook', 'runcache' );
 function runcache()
 {
+	global $logfile;
+	$fh = fopen($logfile, 'a');
+	
+	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." runcache\n");
 	$script = dirname(__FILE__)."/runcache.php";
-	`$script >> deletecity.log 2>&1 &`;
+	$logfile = dirname(__FILE__)."/deletecity.log";
+	`$script >> $logfile 2>&1 &`;
 }
 ?>
