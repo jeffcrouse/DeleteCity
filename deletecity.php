@@ -25,7 +25,6 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 */
 
 
-
 // --------------------------------------------------------------------------
 // ACTIVATION
 register_activation_hook( __FILE__ 'deletecity_activate');
@@ -33,7 +32,10 @@ function deletecity_activate()
 {
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
-		wp_schedule_event( time(), 'daily', 'runcache_function_hook' );
+		
+		$fh = fopen("deletecity.log", 'a');
+		fwrite($fh, "\n\n[deletecity] ".date("F j, Y, g:i a")." Activating Plugin HOURLY\n\n");
+		wp_schedule_event( time(), 'hourly', 'runcache_function_hook' );
 	}
 }
 
@@ -45,6 +47,8 @@ function deletecity_deactivate()
 {
 	if($timestamp = wp_next_scheduled( 'runcache_function_hook' ))
 	{
+		$fh = fopen("deletecity.log", 'a');
+		fwrite($fh, "\n\n[deletecity] ".date("F j, Y, g:i a")." Deactivating Plugin\n\n");
 		wp_unschedule_event($timestamp, 'runcache_function_hook' );
 	}
 }
