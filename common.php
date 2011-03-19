@@ -1,13 +1,12 @@
 <?php
 require_once("config.php");
 
-$dbfile = "deletecity.rsd";
 $db = new SQLiteDatabase($dbfile);
 if (!$db)
 {
 	$error = (file_exists($dbfile)) 
-		? "Impossible to open, check permissions\n" 
-		: "Impossible to create, check permissions\n";
+		? "Error: Impossible to open, check permissions\n" 
+		: "Error: Impossible to create, check permissions\n";
 	die($error);
 }
 

@@ -27,6 +27,14 @@ more info:
 http://www.jeffcrouse.info/projects/delete-city/
 
 
+INSTALL
+=======================
+To install the plugin in your Wordpress, try this:
+
+cd [wordpress root]/wp-content/plugins
+git clone --recursive https://github.com/jefftimesten/DeleteCity.git
+
+
 REQUIREMENTS
 =========================
 

@@ -9,7 +9,11 @@ $cache_dir = dirname(__FILE__)."/cache";
 // The file that contains a list of YouTube feed URLs
 $sources_file = dirname(__FILE__)."/sources";
 
-$youtube_dl = dirname(__FILE__)."/youtube-dl/youtube-dl";
+// Path to the youtube-dl executable
+$youtube_dl = dirname(__FILE__)."/youtube-dl";
+
+// Where the SQLite database will be stored
+$dbfile = dirname(__FILE__)."/deletecity.rsd";
 
 // The user agent to use when downloading stuff from YouTube
 $user_agent = "spider";
