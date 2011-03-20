@@ -21,5 +21,5 @@ $dbfile = dirname(__FILE__)."/deletecity.rsd";
 $user_agent = "spider";
 
 // Max speed that the videos will be downloaded
-$rate_limit="500k";
+$rate_limit="100k";
 ?>

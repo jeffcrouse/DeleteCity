@@ -17,10 +17,12 @@ if (!$q)
 		id 				INTEGER PRIMARY KEY NULL, 
 		youtube_id		VarChar NULL UNIQUE,
 		title 			CHAR(255) NULL,
+		content			Text NULL,
 		author			CHAR(255) NULL,
 		date_added 		DATETIME NOT NULL,
-		date_updated 	DATETIME DEFAULT CURRENT_TIMESTAMP,
-		removed			Boolean NULL DEFAULT 0
+		seen_in_feed 	DATETIME NOT NULL,
+		removed			Boolean NULL DEFAULT 0,
+		expired			Boolean NULL DEFAULT 0
 	);", $query_error);
 	if ($query_error)
 		die("Error: $query_error");

@@ -104,7 +104,7 @@ foreach($urls as $url)
 		$video = new Video( $matches[1] );
 		
 		// If we need to download the video, do it!
-		if(!file_exists($video->vid_path))
+		if(!$video->expired && !file_exists($video->vid_path))
 		{
 			print "\tStatus: [$i/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
 			
@@ -113,12 +113,17 @@ foreach($urls as $url)
 		}
 		
 		// If the video hasn't been saved to the database, save it!
-		if(!$video->in_db)
+		if($video->in_db)
+		{
+			$video->seen_in_feed();
+		}
+		else
 		{
 			if(file_exists($video->vid_path))
 			{
 				print "\tStatus: [$i/$num_vids] Adding \"{$entry->title}\" ({$video->youtube_id}) to database\n";
 				$video->title = $entry->title;
+				$video->content = $entry->content;
 				$video->author = $entry->author->name;
 				$video->save();
 			}
@@ -148,7 +153,8 @@ if ($dhandle)
 	{
 		if ($fname!='.' && $fname!='..' && !is_dir("./$fname") && !strpos($fname,".part") && $fname!="README")
 		{
-			$youtube_id = strstr(basename($fname), ".", true);
+			$path_parts = pathinfo($fname);
+			$youtube_id = $path_parts['filename'];
 			if(!empty($youtube_id))
 			{
 				$video = new Video( $youtube_id );
@@ -181,7 +187,7 @@ if ($dhandle)
 // Now loop through every video where removed=0 and check to see if it still exists on YouTube
 print "Status: Checking for removed videos\n";
 
-$result = $db->query("SELECT youtube_id FROM videos WHERE removed=0", SQLITE_ASSOC, $query_error); 
+$result = $db->query("SELECT youtube_id FROM videos WHERE removed=0 AND expired=0", SQLITE_ASSOC, $query_error); 
 if ($query_error)
     die("Error: $query_error"); 
     
@@ -198,11 +204,9 @@ while($row = $result->fetch(SQLITE_ASSOC))
 	if($video->check_remote())
 	{
 		print "\tStatus: [$i/$total] {$row['youtube_id']} still exists.  Age={$video->age}\n";
-		$video->mark_as_updated();
-		
 		if($video->age > $max_age)
 		{
-			$video->delete();
+			$video->mark_as_expired();
 		}
 	}
     else

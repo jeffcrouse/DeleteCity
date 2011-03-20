@@ -7,11 +7,13 @@ class Video {
 	// database fields
 	var $id=NULL;
 	var $title=NULL;
+	var $content=NULL;
 	var $author=NULL;
 	var $removed=false;
 	var $youtube_id=NULL;
 	var $date_added;
-	var $date_updated;
+	var $seen_in_feed;
+	var $expired=false;
 	
 	// other
 	var $age=0;
@@ -27,8 +29,8 @@ class Video {
 		$this->youtube_id = $youtube_id;
 		$this->vid_path = "{$cache_dir}/{$youtube_id}.mp4";
 		
-		$sql="SELECT id, title, author, date_added, date_updated, removed,
-			round(strftime('%J', datetime('now'))-strftime('%J', date_added), 2) as age
+		$sql="SELECT id, title, content, author, date_added, seen_in_feed, removed, expired,
+			round(strftime('%J', datetime('now'))-strftime('%J', seen_in_feed), 2) as age
 			FROM videos WHERE youtube_id='{$youtube_id}'";
 			
 		$result = $db->query($sql, SQLITE_ASSOC, $query_error); 
@@ -45,10 +47,12 @@ class Video {
 			$row = $result->fetch(SQLITE_ASSOC);
 			$this->id = 			$row['id'];
 			$this->title = 			$row['title'];
+			$this->content = 		$row['content'];
 			$this->author = 		$row['author'];
 			$this->date_added = 	$row['date_added'];
-			$this->date_updated = 	$row['date_updated'];
+			$this->seen_in_feed = 	$row['seen_in_feed'];
 			$this->removed = 		$row['removed'];
+			$this->expired = 		$row['expired'];
 			$this->age = 			$row['age'];
 			$this->in_db =			true;
 		}
@@ -61,25 +65,7 @@ class Video {
 		return $this->fetch_info();
 	}
 	
-	// ----------------------------------------------
-	function delete()
-	{
-		global $db;
-	
-		if(unlink($this->vid_path))
-		{
-			$sql=sprintf("DELETE FROM videos WHERE youtube_id='{$this->youtube_id}'");
-			if (!$db->queryExec($sql, $error))
-			{
-				throw new Exception($error);
-			}
-		}
-		else
-		{
-			throw new Exception("Could not delete {$this->youtube_id}.  Check permissions.");
-		}
-	}
-	
+		
 	// ----------------------------------------------
 	function fetch_info()
 	{
@@ -106,10 +92,28 @@ class Video {
 	}
 	
 	// ----------------------------------------------
-	function mark_as_updated()
+	function mark_as_expired()
 	{
 		global $db;
-		$sql=sprintf("UPDATE videos SET date_updated=DATETIME('now') WHERE youtube_id='{$this->youtube_id}'");	
+		if(unlink($this->vid_path))
+		{
+			$sql="UPDATE videos SET expired=1 WHERE youtube_id='{$this->youtube_id}'";
+			if (!$db->queryExec($sql, $error))
+			{
+				throw new Exception($error);
+			}
+		}
+		else
+		{
+			throw new Exception("Could not delete {$this->youtube_id}.  Check permissions.");
+		}
+	}
+	
+	// ----------------------------------------------
+	function seen_in_feed()
+	{
+		global $db;
+		$sql="UPDATE videos SET seen_in_feed=DATETIME('now') WHERE youtube_id='{$this->youtube_id}'";	
 		$db->query($sql, SQLITE_ASSOC, $query_error);
 		if ($query_error)
 		{
@@ -121,7 +125,7 @@ class Video {
 	function mark_as_removed()
 	{
 		global $db;
-		$sql=sprintf("UPDATE videos SET removed=1 WHERE youtube_id='{$this->youtube_id}'");	
+		$sql="UPDATE videos SET removed=1 WHERE youtube_id='{$this->youtube_id}'";	
 		$db->query($sql, SQLITE_ASSOC, $query_error);
 		if ($query_error)
 		{
@@ -142,10 +146,12 @@ class Video {
 		
 		if($this->in_db)
 		{
-			$sql=sprintf("UPDATE videos SET title='%s', author='%s', date_updated=DATETIME('now'), removed=%d WHERE youtube_id='%s'",
+			$sql=sprintf("UPDATE videos SET title='%s', content='%s', author='%s', removed=%d, expired=%d WHERE youtube_id='%s'",
 				sqlite_escape_string($this->title),
+				sqlite_escape_string($this->content),
 				sqlite_escape_string($this->author),
 				$this->removed ? 1 : 0,
+				$this->expired ? 1 : 0,
 				sqlite_escape_string($this->youtube_id) );	
 			$db->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)
@@ -155,10 +161,11 @@ class Video {
 		}
 		else
 		{
-			$sql=sprintf("INSERT INTO videos (youtube_id, title, author, date_added, date_updated) 
-				VALUES ('%s', '%s', '%s', DATETIME('now'), DATETIME('now'))",
+			$sql=sprintf("INSERT INTO videos (youtube_id, title, content, author, date_added, seen_in_feed) 
+				VALUES ('%s', '%s', '%s', '%s', DATETIME('now'), DATETIME('now'))",
 				sqlite_escape_string($this->youtube_id),
 				sqlite_escape_string($this->title),
+				sqlite_escape_string($this->content),
 				sqlite_escape_string($this->author) );		
 			$db->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)

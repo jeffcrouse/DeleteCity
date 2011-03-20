@@ -16,3 +16,4 @@ Backup[ ]of[ ]*.numbers/
 test.php
 /*.rsd
 /*.log
+/*.pid
