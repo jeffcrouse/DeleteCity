@@ -5,8 +5,8 @@ $db = new SQLiteDatabase($dbfile);
 if (!$db)
 {
 	$error = (file_exists($dbfile)) 
-		? "Error: Impossible to open, check permissions\n" 
-		: "Error: Impossible to create, check permissions\n";
+		? "Error: Impossible to open database file, check permissions\n" 
+		: "Error: Impossible to create database file, check permissions\n";
 	die($error);
 }
 

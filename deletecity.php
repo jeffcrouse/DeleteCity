@@ -169,7 +169,7 @@ function post_removed_videos()
 	$content = "<ol>";
 	foreach($videos as $video)
 	{ 
-		$url = sprintf("%s/%s", WP_PLUGIN_URL, str_replace(basename( __FILE__), "", $video->vid_path);
+		$url = sprintf("%s/%s", WP_PLUGIN_URL, str_replace(basename( __FILE__), "", $video->vid_path));
 		$content .= "<li><b><a href=\"$url\">{$video->title}</a></b>: {$video->content}</li>";
 		$video->mark_as_posted();
 	}

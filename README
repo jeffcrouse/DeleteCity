@@ -91,3 +91,5 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 -- Catch exceptions from Video class
 
 -- Clean up runcache -- it's messy!
+
+-- Admin interface for 1) frequency of caching 2) sources 3) frequency of posting 4) ?
