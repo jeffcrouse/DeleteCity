@@ -181,7 +181,7 @@ function post_removed_videos()
 	while ($row = $result->fetch(SQLITE_ASSOC))
 	{ 
 		$url = "http://www.youtube.com/watch?v={$row['youtube_id']}";
-		$content = "<li><b><a href=\"$url\">$row['title']</a></b>: $row['content']</li>";
+		$content = "<li><b><a href=\"$url\">{$row['title']}</a></b>: {$row['content']}</li>";
 	}
 	$content .= "</ol>";
 	
