@@ -157,12 +157,12 @@ function post_removed_videos()
 {	
 	$logfile =  dirname(__FILE__)."/deletecity.log";
 	$fh = fopen($logfile, 'a');
-	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posts of removed videos\n");
 	
 	$videos = Video::get_unposted_removed();
 	
 	if(count($videos) < 1)
 	{
+		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." No videos to post\n");
 		return;
 	}
 	
@@ -186,6 +186,7 @@ function post_removed_videos()
 	);
 	
 	// Insert the post into the database
+	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posts of removed videos\n");
 	wp_insert_post( $my_post );
 }
 ?>
