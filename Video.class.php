@@ -176,5 +176,27 @@ class Video {
 			$this->id = $db->lastInsertRowid();
 		}
 	}
+	
+	static function get_removed()
+	{
+		$videos = array();
+		$sql = "SELECT youtube_id FROM videos WHERE removed > 0";
+	
+		$result = $db->query($sql, SQLITE_ASSOC, $query_error); 
+		if ($query_error)
+		{
+			throw new Exception( $query_error );
+		}	
+		if (!$result)
+		{
+			throw new Exception("Impossible to execute query.");
+		}
+		
+		while ($row = $result->fetch(SQLITE_ASSOC))
+		{
+			$videos[] = new Video( $row['youtube_id'] );
+		}
+		return $videos;
+	}
 }
 ?>

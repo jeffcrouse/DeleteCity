@@ -154,34 +154,23 @@ function runcache()
 // POSTING EVENT
 add_action( 'post_removed_videos_function_hook', 'post_removed_videos' );
 function post_removed_videos()
-{
-	require_once("common.php");
-	
+{	
 	$logfile =  dirname(__FILE__)."/deletecity.log";
 	$fh = fopen($logfile, 'a');
 	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posts of removed videos\n");
 	
-	$sql = "SELECT id, youtube_id, title, content, author, date_added, date_updated, removed,
-		round(strftime('%J', datetime('now'))-strftime('%J', date_added), 2) as age
-		FROM videos WHERE removed > 0";
+	$videos = Video::get_removed();
 	
-	$result = $db->query($sql, SQLITE_ASSOC, $query_error); 
-	if ($query_error)
-		die("Error: $query_error"); 
-		
-	if (!$result)
-		die("Impossible to execute query.");
-	
-	if($result->numRows()<1)
+	if(count($videos) < 1)
 	{
 		return;
 	}
 	
 	$content = "<ol>";
-	while ($row = $result->fetch(SQLITE_ASSOC))
+	foreach($videos as $video)
 	{ 
-		$url = "http://www.youtube.com/watch?v={$row['youtube_id']}";
-		$content = "<li><b><a href=\"$url\">{$row['title']}</a></b>: {$row['content']}</li>";
+		$url = sprintf("%s/%s", WP_PLUGIN_URL, str_replace(basename( __FILE__), "", $video->vid_path);
+		$content .= "<li><b><a href=\"$url\">{$video->title}</a></b>: {$video->content}</li>";
 	}
 	$content .= "</ol>";
 	
