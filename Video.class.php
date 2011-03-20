@@ -134,6 +134,18 @@ class Video {
 	}
 	
 	// ----------------------------------------------
+	function mark_as_posted()
+	{
+		global $db;
+		$sql="UPDATE videos SET posted=1 WHERE youtube_id='{$this->youtube_id}'";	
+		$db->query($sql, SQLITE_ASSOC, $query_error);
+		if ($query_error)
+		{
+			throw new Exception( $query_error );
+		}
+	}
+	
+	// ----------------------------------------------
 	// Updates or Inserts depending on whether it is already in the database
 	function save()
 	{
@@ -146,12 +158,14 @@ class Video {
 		
 		if($this->in_db)
 		{
-			$sql=sprintf("UPDATE videos SET title='%s', content='%s', author='%s', removed=%d, expired=%d WHERE youtube_id='%s'",
+			$sql=sprintf("UPDATE videos SET title='%s', content='%s', author='%s', removed=%d, expired=%d, posted=%d
+				WHERE youtube_id='%s'",
 				sqlite_escape_string($this->title),
 				sqlite_escape_string($this->content),
 				sqlite_escape_string($this->author),
 				$this->removed ? 1 : 0,
 				$this->expired ? 1 : 0,
+				$this->posted ? 1 : 0,
 				sqlite_escape_string($this->youtube_id) );	
 			$db->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)
@@ -177,10 +191,12 @@ class Video {
 		}
 	}
 	
-	static function get_removed()
+	static function get_unposted_removed()
 	{
+		global $db;
+		
 		$videos = array();
-		$sql = "SELECT youtube_id FROM videos WHERE removed > 0";
+		$sql = "SELECT youtube_id FROM videos WHERE removed=1 AND posted=0";
 	
 		$result = $db->query($sql, SQLITE_ASSOC, $query_error); 
 		if ($query_error)

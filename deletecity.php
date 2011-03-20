@@ -159,7 +159,7 @@ function post_removed_videos()
 	$fh = fopen($logfile, 'a');
 	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posts of removed videos\n");
 	
-	$videos = Video::get_removed();
+	$videos = Video::get_unposted_removed();
 	
 	if(count($videos) < 1)
 	{
@@ -171,6 +171,7 @@ function post_removed_videos()
 	{ 
 		$url = sprintf("%s/%s", WP_PLUGIN_URL, str_replace(basename( __FILE__), "", $video->vid_path);
 		$content .= "<li><b><a href=\"$url\">{$video->title}</a></b>: {$video->content}</li>";
+		$video->mark_as_posted();
 	}
 	$content .= "</ol>";
 	

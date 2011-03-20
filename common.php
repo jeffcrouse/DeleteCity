@@ -22,7 +22,8 @@ if (!$q)
 		date_added 		DATETIME NOT NULL,
 		seen_in_feed 	DATETIME NOT NULL,
 		removed			Boolean NULL DEFAULT 0,
-		expired			Boolean NULL DEFAULT 0
+		expired			Boolean NULL DEFAULT 0,
+		posted			Boolean NULL DEFAULT 0
 	);", $query_error);
 	if ($query_error)
 		die("Error: $query_error");
