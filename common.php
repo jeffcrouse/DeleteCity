@@ -1,19 +1,19 @@
 <?php
 require_once("config.php");
 
-$db = new SQLiteDatabase($dbfile);
-if (!$db)
+$dcdb = new SQLiteDatabase($dcdbfile);
+if (!$dcdb)
 {
-	$error = (file_exists($dbfile)) 
+	$error = (file_exists($dcdbfile)) 
 		? "Error: Impossible to open database file, check permissions\n" 
 		: "Error: Impossible to create database file, check permissions\n";
 	die($error);
 }
 
-$q = @$db->query("SELECT id FROM videos WHERE id=1");
+$q = @$dcdb->query("SELECT id FROM videos WHERE id=1");
 if (!$q)
 {
-	$db->queryExec("
+	$dcdb->queryExec("
 	CREATE TABLE videos (
 		id 				INTEGER PRIMARY KEY NULL, 
 		youtube_id		VarChar NULL UNIQUE,

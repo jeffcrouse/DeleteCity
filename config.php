@@ -21,7 +21,7 @@ if(defined("WP_CONTENT_DIR"))
 	$cache_dir = WP_CONTENT_DIR."/dc_cache";
 	
 	// Where the SQLite database will be stored
-	$dbfile =  WP_CONTENT_DIR."/deletecity.rsd";
+	$dcdbfile =  WP_CONTENT_DIR."/deletecity.rsd";
 }
 else
 {
@@ -29,6 +29,6 @@ else
 	$cache_dir = dirname(__FILE__)."/../../dc_cache";
 	
 	// Where the SQLite database will be stored
-	$dbfile = dirname(__FILE__)."/../../deletecity.rsd";
+	$dcdbfile = dirname(__FILE__)."/../../deletecity.rsd";
 }
 ?>

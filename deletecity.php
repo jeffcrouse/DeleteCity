@@ -26,29 +26,6 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 
 // --------------------------------------------------------------------------
 // DEFINE SOME FREQUENCIES
-/*
-Array
-(
-    [hourly] => Array
-        (
-            [interval] => 3600
-            [display] => Once Hourly
-        )
- 
-    [twicedaily] => Array
-        (
-            [interval] => 43200
-            [display] => Twice Daily
-        )
- 
-    [daily] => Array
-        (
-            [interval] => 86400
-            [display] => Once Daily
-        )
- 
-)
-*/
 add_filter('cron_schedules', 'deletecity_cron_definer');    
 function deletecity_cron_definer($schedules)
 {
@@ -68,17 +45,27 @@ function deletecity_activate()
 	$logfile =  dirname(__FILE__)."/deletecity.log";
 	$fh = fopen($logfile, 'a');
 	
+	if(!get_option('cache_schedule'))
+	{
+		add_option('cache_schedule', 'twicedaily');
+	}
+	
+	if(!get_option('post_schedule'))
+	{
+		add_option('post_schedule', 'weekly');
+	}
+	
 	// Add the two events to th eschedule
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding caching event to schedule\n");
-		wp_schedule_event(time(), 'twicedaily', 'runcache_function_hook' );
+		wp_schedule_event(time(), get_option('cache_schedule'), 'runcache_function_hook' );
 	}	
 	
-	if (!wp_next_scheduled('post_removed_videos_function_hook'))
+	if (!wp_next_scheduled('post_videos_function_hook'))
 	{
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posting event to schedule\n");
-		wp_schedule_event(time(), 'weekly', 'post_removed_videos_function_hook' );
+		wp_schedule_event(time(), get_option('post_schedule'), 'post_videos_function_hook' );
 	}
 }
 
@@ -125,10 +112,10 @@ function deletecity_deactivate()
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Removing caching event from schedule\n");
 		wp_unschedule_event($timestamp, 'runcache_function_hook' );
 	}
-	if($timestamp = wp_next_scheduled('make_post_function_hook'))
+	if($timestamp = wp_next_scheduled('post_videos_function_hook'))
 	{
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Removing posting event from schedule\n");
-		wp_unschedule_event($timestamp, 'make_post_function_hook' );
+		wp_unschedule_event($timestamp, 'post_videos_function_hook' );
 	}
 }
 
@@ -151,7 +138,7 @@ function runcache()
 
 // --------------------------------------------------------------------------
 // POSTING EVENT
-add_action( 'post_removed_videos_function_hook', 'post_removed_videos' );
+add_action( 'post_videos_function_hook', 'post_removed_videos' );
 function post_removed_videos()
 {	
 	$logfile =  dirname(__FILE__)."/deletecity.log";
@@ -187,5 +174,118 @@ function post_removed_videos()
 	// Insert the post into the database
 	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posts of removed videos\n");
 	wp_insert_post( $my_post );
+}
+
+
+// --------------------------------------------------------------------------
+// ADMIN MENU
+if ( is_admin() )
+{
+	require_once("common.php");
+	
+	add_action('admin_menu', 'deletecity_admin_menu');
+	function deletecity_admin_menu()
+	{
+		add_options_page('Delete City', 'Delete City', 'administrator', 'deletecity', 'deletecity_html_page');
+	}
+	
+	function deletecity_html_page()
+	{
+		global $dcdb;
+	
+		//must check that the user has the required capability 
+		if (!current_user_can('manage_options'))
+		{
+			wp_die( __('You do not have sufficient permissions to access this page.') );
+		} 
+		
+		$result = $dcdb->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
+		if ($query_error)
+			die("Error: $query_error"); 
+			
+		if (!$result)
+			die("Error: Impossible to execute query.");
+		
+		$urls = "";
+		while($row = $result->fetch(SQLITE_ASSOC))
+		{
+			$urls .= $row['feed_url']."\n";
+		}
+		$schedules = wp_get_schedules();
+		?>
+	
+		<div>
+		<h2>Delete City Options</h2>
+		
+		<form method="post" action="">
+
+			<h3>Cache Frequency</h3>
+			<p>How often should DeleteCity download videos from the sources?</p>
+			<ul>
+			<?php foreach($schedules as $slug => $schedule): ?>
+			<li>
+				<?php $checked = (get_option('cache_schedule')==$slug) ? 'checked' : ''; ?>
+				<input type="radio" name="dc-cache-schedule" value="<?php echo $slug; ?>" <?php echo $checked; ?> /> 
+				<?php echo $schedule['display']; ?>
+			</li>
+			<?php endforeach; ?>
+			</ul>
+			
+			<h3>Post Frequency</h3>
+			<p>How often should DeleteCity post the videos it finds to your blog?</p>
+			<ul>
+			<?php foreach($schedules as $slug => $schedule): ?>
+			<li>
+				<?php $checked = (get_option('post_schedule')==$slug) ? 'checked' : ''; ?>
+				<input type="radio" name="dc-post-schedule" value="<?php echo $slug; ?>" <?php echo $checked; ?> /> 
+				<?php echo $schedule['display']; ?>
+			</li>
+			<?php endforeach; ?>
+			</ul>
+			
+			<h3>Sources</h3>
+			<textarea name="dc-sources" style="width: 90%; height: 200px;"><?php echo $urls?></textarea>
+
+			<p>
+				<input type="hidden" name="dc_submit_options" value="true" />
+				<input type="submit" value="<?php _e('Save Changes') ?>" />
+			</p>
+			
+		</form>
+		</div>
+	<?php
+	}
+	
+	// Handle submitted data
+	if(isset($_REQUEST['dc_submit_options']) && $_REQUEST['dc_submit_options']=='true')
+	{
+		$dcdb->queryExec("DELETE FROM sources;", $query_error);
+		if ($query_error)
+		{
+			die("Error: $query_error");
+		}
+		$sources = explode("\n", $_REQUEST['dc-sources']);
+		foreach($sources as $source)
+		{
+			$source=trim($source);
+			if(empty($source))
+			{
+				continue;
+			}
+			$source = sqlite_escape_string($source);
+			$dcdb->queryExec("INSERT INTO sources (feed_url) VALUES('$source');", $query_error);
+			if ($query_error)
+			{
+				die("Error: $query_error");
+			}
+		}
+	
+		update_option('cache_schedule', $_REQUEST['dc-cache-schedule']);
+		update_option('post_schedule',  $_REQUEST['dc-post-schedule']);
+	
+		deletecity_deactivate();
+		deletecity_activate();	
+	}
+	
 }
 ?>

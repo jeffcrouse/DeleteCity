@@ -24,7 +24,7 @@ class Video {
 	// ----------------------------------------------
 	function Video( $youtube_id )
 	{
-		global $db, $cache_dir;
+		global $dcdb, $cache_dir;
 	
 		$this->youtube_id = $youtube_id;
 		$this->vid_path = "{$cache_dir}/{$youtube_id}.mp4";
@@ -33,7 +33,7 @@ class Video {
 			round(strftime('%J', datetime('now'))-strftime('%J', seen_in_feed), 2) as age
 			FROM videos WHERE youtube_id='{$youtube_id}'";
 			
-		$result = $db->query($sql, SQLITE_ASSOC, $query_error); 
+		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
 		if ($query_error) {
 			throw new Exception($query_error);
 		}
@@ -94,11 +94,11 @@ class Video {
 	// ----------------------------------------------
 	function mark_as_expired()
 	{
-		global $db;
+		global $dcdb;
 		if(unlink($this->vid_path))
 		{
 			$sql="UPDATE videos SET expired=1 WHERE youtube_id='{$this->youtube_id}'";
-			if (!$db->queryExec($sql, $error))
+			if (!$dcdb->queryExec($sql, $error))
 			{
 				throw new Exception($error);
 			}
@@ -112,9 +112,9 @@ class Video {
 	// ----------------------------------------------
 	function seen_in_feed()
 	{
-		global $db;
+		global $dcdb;
 		$sql="UPDATE videos SET seen_in_feed=DATETIME('now') WHERE youtube_id='{$this->youtube_id}'";	
-		$db->query($sql, SQLITE_ASSOC, $query_error);
+		$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 		if ($query_error)
 		{
 			throw new Exception( $query_error );
@@ -124,9 +124,9 @@ class Video {
 	// ----------------------------------------------
 	function mark_as_removed()
 	{
-		global $db;
+		global $dcdb;
 		$sql="UPDATE videos SET removed=1 WHERE youtube_id='{$this->youtube_id}'";	
-		$db->query($sql, SQLITE_ASSOC, $query_error);
+		$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 		if ($query_error)
 		{
 			throw new Exception( $query_error );
@@ -136,9 +136,9 @@ class Video {
 	// ----------------------------------------------
 	function mark_as_posted()
 	{
-		global $db;
+		global $dcdb;
 		$sql="UPDATE videos SET posted=1 WHERE youtube_id='{$this->youtube_id}'";	
-		$db->query($sql, SQLITE_ASSOC, $query_error);
+		$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 		if ($query_error)
 		{
 			throw new Exception( $query_error );
@@ -149,7 +149,7 @@ class Video {
 	// Updates or Inserts depending on whether it is already in the database
 	function save()
 	{
-		global $db;
+		global $dcdb;
 		
 		if(empty($this->title) || empty($this->author) || empty($this->youtube_id))
 		{
@@ -167,7 +167,7 @@ class Video {
 				$this->expired ? 1 : 0,
 				$this->posted ? 1 : 0,
 				sqlite_escape_string($this->youtube_id) );	
-			$db->query($sql, SQLITE_ASSOC, $query_error);
+			$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)
 			{
 				throw new Exception( $query_error );
@@ -181,24 +181,24 @@ class Video {
 				sqlite_escape_string($this->title),
 				sqlite_escape_string($this->content),
 				sqlite_escape_string($this->author) );		
-			$db->query($sql, SQLITE_ASSOC, $query_error);
+			$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)
 			{
 				throw new Exception( $query_error );
 			}
 			$this->in_db = true;
-			$this->id = $db->lastInsertRowid();
+			$this->id = $dcdb->lastInsertRowid();
 		}
 	}
 	
 	static function get_unposted_removed()
 	{
-		global $db;
+		global $dcdb;
 		
 		$videos = array();
 		$sql = "SELECT youtube_id FROM videos WHERE removed=1 AND posted=0";
 	
-		$result = $db->query($sql, SQLITE_ASSOC, $query_error); 
+		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
 		if ($query_error)
 		{
 			throw new Exception( $query_error );

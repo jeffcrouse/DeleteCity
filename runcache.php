@@ -50,7 +50,7 @@ if(!is_writable($cache_dir))
 *******************************/
 
 
-$result = $db->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
+$result = $dcdb->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
 if ($query_error)
     die("Error: $query_error"); 
     
@@ -197,7 +197,7 @@ if ($dhandle)
 // Now loop through every video where removed=0 and check to see if it still exists on YouTube
 print "Status: Checking for removed videos\n";
 
-$result = $db->query("SELECT youtube_id FROM videos WHERE removed=0 AND expired=0", SQLITE_ASSOC, $query_error); 
+$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed=0 AND expired=0", SQLITE_ASSOC, $query_error); 
 if ($query_error)
     die("Error: $query_error"); 
     
