@@ -129,7 +129,6 @@ function runcache()
 	$fh = fopen($logfile, 'a');
 	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Starting runcache\n");
 	$runcache = dirname(__FILE__)."/runcache.php";
-	$logfile = dirname(__FILE__)."/deletecity.log";
 	
 	// run the cachiing process in the background.
 	`$runcache >> $logfile 2>&1 &`;
