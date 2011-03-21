@@ -216,7 +216,9 @@ if ( is_admin() )
 	
 		<div>
 		<h2>Delete City Options</h2>
-		
+		<?php if(file_exists(dirname(__FILE__)."/runcache.php.pid")): ?>
+		<p style="color: #FF0000;">WARNING:  The caching process is currently running.  Saving options now will restart it.</p>
+		<?php endif; ?>
 		<form method="post" action="">
 
 			<h3>Cache Frequency</h3>
