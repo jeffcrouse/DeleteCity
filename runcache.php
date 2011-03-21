@@ -57,8 +57,8 @@ if ($query_error)
 if (!$result)
     die("Error: Impossible to execute query.");
 
-$total = $result->numRows();
-print "Status: Found $total feeds\n";
+$num_feeds = $result->numRows();
+$cur_feed=1;
 
 while($row = $result->fetch(SQLITE_ASSOC))
 {
@@ -66,11 +66,11 @@ while($row = $result->fetch(SQLITE_ASSOC))
 
 	if(strpos($url, "http://gdata.youtube.com/feeds/api/")!=0)
 	{
-		print "Error: Must be a gdata.youtube.com/feeds/api feed\n";
+		print "Error:  [$cur_feed/$num_feeds] Must be a gdata.youtube.com/feeds/api feed\n";
 		continue;
 	}
 
-	print "Status: Fetching $url\n";
+	print "Status: Fetching feed $cur_feed of $num_feeds: $url\n";
 
 	// Download feed
 	$response = get_web_page( $url );
@@ -104,7 +104,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 	// maybe some XPaths to make sure the status is OK and that it has entries, etc.
 	
 	$num_vids = count($xmldoc->entry);
-	$i=1;
+	$cur_vid=1;
 	foreach($xmldoc->entry as $entry)
 	{
 		$vid_url = $entry->link[0]['href'];				// TO DO:  We can't be sure that the href is element 0
@@ -115,7 +115,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 		// If we need to download the video, do it!
 		if(!$video->expired && !file_exists($video->vid_path))
 		{
-			print "\tStatus: [$i/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
+			print "\tStatus: [$cur_vid/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
 			
 			// http://rg3.github.com/youtube-dl/documentation.html#d6
 			`$youtube_dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
@@ -130,7 +130,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 		{
 			if(file_exists($video->vid_path))
 			{
-				print "\tStatus: [$i/$num_vids] Adding \"{$entry->title}\" ({$video->youtube_id}) to database\n";
+				print "\tStatus: [$cur_vid/$num_vids] Adding \"{$entry->title}\" ({$video->youtube_id}) to database\n";
 				$video->title = $entry->title;
 				$video->content = $entry->content;
 				$video->author = $entry->author->name;
@@ -138,11 +138,12 @@ while($row = $result->fetch(SQLITE_ASSOC))
 			}
 			else
 			{
-				print "\tError: [$i/$num_vids] File was not successfully downloaded.  Not adding to database.\n";
+				print "\tError: [$cur_vid/$num_vids] File was not successfully downloaded.  Not adding to database.\n";
 			}
 		}
-		$i++;
+		$cur_vid++;
 	}
+	$cur_feed++;
 }
 
 

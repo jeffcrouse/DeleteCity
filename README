@@ -85,4 +85,4 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 -- Admin interface for 1) frequency of caching 2) sources 3) frequency of posting 4) ?
 
--- System for incremental database updates (for instance, adding the 'posted' column to a running plugin).  Which raises the question: when a plugin is auto-updated, does it delete everything in the plugin directory?  If so, I'll have to move the cache, log, database out of the plugin dir
+-- System for incremental database updates (for instance, adding the 'posted' column to a running plugin). 
