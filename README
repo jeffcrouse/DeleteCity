@@ -48,6 +48,8 @@ translate into Windows. I'd love someone to help me, though!
 PHP >= 5.1 (according to http://phpduck.com/minimum-php-version-script/)
 Python >= 2.5
 
+IMPORTANT: Apparently many videos are blocked outside of the US, so this plugin will probably fail for non-US users.
+
 
 YOUTUBE-DL
 ========================
@@ -68,8 +70,6 @@ http://www.youtube.com/watch?v=PgEo_7rMH0Q				account terminated
 http://www.youtube.com/watch?v=JdGJxI6LrX4				removed by user
 http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
--- Save video description, and other attributed of the video from the feed.
-
 -- Option to automatically email the video author to ask why the video was taken down :)
 
 -- Batch query in check.php?
@@ -80,6 +80,16 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 -- Clean up runcache -- it's messy!
 
--- Admin interface for 1) frequency of caching 2) sources 3) frequency of posting 4) ?
-
 -- System for incremental database updates (for instance, adding the 'posted' column to a running plugin). 
+
+-- Database security: save database file outside of web-readable directory?  Is there a better way?
+
+-- Central database ping when a deleted video is found. (optional)
+
+-- Make "post now" and "cache now" buttons on the admin page.
+
+-- Log viewer in the cache page?
+
+-- Use PDO instead of SQLite 
+	http://www.phpro.org/tutorials/Introduction-to-PHP-PDO.html#4.2
+	http://henryranch.net/software/ease-into-sqlite-3-with-php-and-pdo/

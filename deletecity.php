@@ -245,6 +245,8 @@ if ( is_admin() )
 			</ul>
 			
 			<h3>Sources</h3>
+			<p>Check out <a href="http://code.google.com/apis/youtube/2.0/reference.html#Searching_for_videos">
+			this page for more information about source URLS</a>.</p>
 			<textarea name="dc-sources" style="width: 90%; height: 200px;"><?php echo $urls?></textarea>
 
 			<p>
