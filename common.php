@@ -13,7 +13,8 @@ if (!$db)
 $q = @$db->query("SELECT id FROM videos WHERE id=1");
 if (!$q)
 {
-	$db->queryExec("CREATE TABLE videos (
+	$db->queryExec("
+	CREATE TABLE videos (
 		id 				INTEGER PRIMARY KEY NULL, 
 		youtube_id		VarChar NULL UNIQUE,
 		title 			CHAR(255) NULL,
@@ -24,7 +25,18 @@ if (!$q)
 		removed			Boolean NULL DEFAULT 0,
 		expired			Boolean NULL DEFAULT 0,
 		posted			Boolean NULL DEFAULT 0
-	);", $query_error);
+	);
+	CREATE TABLE sources (
+		id 				INTEGER PRIMARY KEY NULL, 
+		feed_url		VarChar NOT NULL
+	);
+	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_recent?&orderby=published&max-results=50'); 
+	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_recent?&orderby=published&max-results=50&start-index=51'); 
+	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_discussed'); 
+	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/top_rated'); 
+	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_viewed');
+	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/videos?q=slow+loris&orderby=published&max-results=25');", 
+	$query_error);
 	if ($query_error)
 		die("Error: $query_error");
 }

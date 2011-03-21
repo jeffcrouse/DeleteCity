@@ -31,16 +31,14 @@ if(!file_exists($youtube_dl))
 	exit;
 }
 
-if(!is_writable($cache_dir))
+if(!file_exists($cache_dir))
 {
-	print "Error: Cache directory is not writable.\n";
-	exit;
+	mkdir($cache_dir, 0777, true);
 }
 
-// Load in the URLs from the 'sources' file
-if(!$urls = file($sources_file, FILE_SKIP_EMPTY_LINES))
+if(!is_writable($cache_dir))
 {
-	print "Error: Couldn't open $sources_file\n";
+	print "Error: $cache_dir is not writable.\n";
 	exit;
 }
 
@@ -52,9 +50,20 @@ if(!$urls = file($sources_file, FILE_SKIP_EMPTY_LINES))
 *******************************/
 
 
-// Loop through all of the URLs from the 'sources' file
-foreach($urls as $url)
+$result = $db->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
+if ($query_error)
+    die("Error: $query_error"); 
+    
+if (!$result)
+    die("Error: Impossible to execute query.");
+
+$total = $result->numRows();
+print "Status: Found $total feeds\n";
+
+while($row = $result->fetch(SQLITE_ASSOC))
 {
+	$url = $row['feed_url'];
+
 	if(strpos($url, "http://gdata.youtube.com/feeds/api/")!=0)
 	{
 		print "Error: Must be a gdata.youtube.com/feeds/api feed\n";

@@ -2,9 +2,8 @@
 /*
 Plugin Name: Delete City
 Plugin URI: http://deletecity.com
-Description: DeleteCity saves videos from YouTube deletion by caching a shitload of them on your 
-server, then checking back periodically to see if they have been taken down.
-Version: 0.1
+Description: DeleteCity saves videos from YouTube deletion by caching a shitload of them on your server, then checking back periodically to see if they have been taken down.
+Version: 0.1.2
 Author: Jeff Crouse
 Author URI: http://jeffcrouse.info
 License: GPL2
@@ -76,7 +75,7 @@ function deletecity_activate()
 		wp_schedule_event(time(), 'twicedaily', 'runcache_function_hook' );
 	}	
 	
-	if (!wp_next_scheduled('make_post_function_hook'))
+	if (!wp_next_scheduled('post_removed_videos_function_hook'))
 	{
 		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posting event to schedule\n");
 		wp_schedule_event(time(), 'weekly', 'post_removed_videos_function_hook' );
