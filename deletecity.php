@@ -24,6 +24,7 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+
 // --------------------------------------------------------------------------
 // DEFINE SOME FREQUENCIES
 add_filter('cron_schedules', 'deletecity_cron_definer');    

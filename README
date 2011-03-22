@@ -84,7 +84,7 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 -- Database security: save database file outside of web-readable directory?  Is there a better way?
 
--- Central database ping when a deleted video is found. (optional)
+-- Central database (on deletecity.org) ping when a deleted video is found. (optional for user)
 
 -- Make "post now" and "cache now" buttons on the admin page.
 
@@ -93,3 +93,10 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 -- Use PDO instead of SQLite 
 	http://www.phpro.org/tutorials/Introduction-to-PHP-PDO.html#4.2
 	http://henryranch.net/software/ease-into-sqlite-3-with-php-and-pdo/
+	
+-- Look for media restriction tag in XML
+	eg: http://gdata.youtube.com/feeds/api/videos/LnKJpYGCLsg
+	<media:restriction type='country' relationship='deny'>DE</media:restriction>
+	
+	http://gdata.youtube.com/feeds/api/videos/CD2LRROpph0
+	<media:restriction type='country' relationship='deny'>DE</media:restriction>

@@ -1,7 +1,4 @@
 <?php
-
-date_default_timezone_set('America/New_York');
-
 // Videos will be deleted after 'max_age' days
 $max_age = 3;
 
@@ -31,4 +28,13 @@ else
 	// Where the SQLite database will be stored
 	$dcdbfile = dirname(__FILE__)."/../../deletecity.rsd";
 }
+
+if(function_exists('date_default_timezone_set'))
+{ 
+   date_default_timezone_set('UTC'); 
+} 
+else 
+{ 
+   putenv("TZ=UTC"); 
+} 
 ?>
