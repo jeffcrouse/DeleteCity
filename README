@@ -88,8 +88,6 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 -- Make "post now" and "cache now" buttons on the admin page.
 
--- Log viewer in the cache page?
-
 -- Use PDO instead of SQLite 
 	http://www.phpro.org/tutorials/Introduction-to-PHP-PDO.html#4.2
 	http://henryranch.net/software/ease-into-sqlite-3-with-php-and-pdo/
@@ -100,3 +98,7 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 	
 	http://gdata.youtube.com/feeds/api/videos/CD2LRROpph0
 	<media:restriction type='country' relationship='deny'>DE</media:restriction>
+	
+-- Check the PHP version at activation
+
+-- Change posted (bool) to date_posted (for easier un/re-posting by batch)

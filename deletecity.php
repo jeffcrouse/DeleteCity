@@ -3,7 +3,7 @@
 Plugin Name: Delete City
 Plugin URI: http://deletecity.com
 Description: DeleteCity saves videos from YouTube deletion by caching a shitload of them on your server, then checking back periodically to see if they have been taken down.
-Version: 0.1.2
+Version: 0.1.3
 Author: Jeff Crouse
 Author URI: http://jeffcrouse.info
 License: GPL2
@@ -24,6 +24,61 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+// Make sure we don't expose any info if called directly
+if ( !function_exists( 'add_action' ) ) {
+	echo "Hi there!  I'm just a plugin, not much I can do when called directly.";
+	exit;
+}
+
+require_once("common.php");
+global $cache_dir, $dcdb, $dclogfile, $runcache;
+$dclogfile = dirname(__FILE__)."/deletecity.log";
+$runcache = dirname(__FILE__)."/runcache.php";
+
+
+// Make these into settings.
+$max_age = 3;		// Videos will be deleted after 'max_age' days
+$rate_limit="100k";	// Max speed that the videos will be downloaded
+
+
+// --------------------------------------------------------------------------
+// WARNINGS
+add_action('admin_notices', 'deletecity_warning');
+function deletecity_warning() {
+	global $runcache, $cache_dir;
+	
+	if(!is_executable($runcache)):
+	?>
+	<div class='error fade'>
+		<p>
+		<strong>DeleteCity has detected a problem. <?php echo $runcache; ?> needs to be executable.</strong> 
+		<a target="_blank" href="http://www.xaviermedia.com/documents/chmod755.php">How do I make a file executable?</a>
+		</p>
+	</div>
+	<?php endif;
+	
+	if(!file_exists($cache_dir))
+	{
+		mkdir($cache_dir, 0777, true);
+	}
+	
+	if(!is_writable($cache_dir)): ?>
+		<div class='error fade'>
+		<p><strong>DeleteCity has detected a problem. <?php echo $cache_dir; ?> needs to be writable.</strong></p>
+		</div>
+	<?php endif;
+}
+
+
+// --------------------------------------------------------------------------
+// LOGGING
+function dc_log($message) 
+{
+	global $dclogfile;
+	$loghandle = fopen($dclogfile, 'a');
+	fwrite($loghandle, "[deletecity] ".date("F j, Y, g:i a")." $message\n");
+}
+
 
 // --------------------------------------------------------------------------
 // DEFINE SOME FREQUENCIES
@@ -43,9 +98,6 @@ function deletecity_cron_definer($schedules)
 register_activation_hook( __FILE__, 'deletecity_activate');
 function deletecity_activate()
 {	
-	$logfile =  dirname(__FILE__)."/deletecity.log";
-	$fh = fopen($logfile, 'a');
-	
 	if(!get_option('cache_schedule'))
 	{
 		add_option('cache_schedule', 'twicedaily');
@@ -59,13 +111,13 @@ function deletecity_activate()
 	// Add the two events to th eschedule
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding caching event to schedule\n");
+		dc_log("Adding caching event to schedule");
 		wp_schedule_event(time(), get_option('cache_schedule'), 'runcache_function_hook' );
 	}	
 	
 	if (!wp_next_scheduled('post_videos_function_hook'))
 	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posting event to schedule\n");
+		dc_log("Adding posting event to schedule");
 		wp_schedule_event(time(), get_option('post_schedule'), 'post_videos_function_hook' );
 	}
 }
@@ -76,10 +128,7 @@ function deletecity_activate()
 // Also kill caching process if it is running
 register_deactivation_hook( __FILE__, 'deletecity_deactivate' );
 function deletecity_deactivate()
-{
-	$logfile =  dirname(__FILE__)."/deletecity.log";
-	$fh = fopen($logfile, 'a');
-	
+{	
 	// Kill the runcache process if it is running.
 	$pid_file = dirname(__FILE__)."/runcache.php.pid";
 	if(file_exists($pid_file))
@@ -91,17 +140,17 @@ function deletecity_deactivate()
 			$error = posix_get_last_error();
 			if($error==0)
 			{
-				fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Killed process $pid\n");
+				dc_log("Killed process $pid");
 			}
 			else
 			{
-				fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Warning: Couldn't kill caching process ($pid).\n");
-				fwrite($fb, posix_strerror($error));
+				dc_log("Warning: Couldn't kill caching process ($pid).");
+				dc_log(posix_strerror($error));
 			}
   		}
   		else
   		{
-  			fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Caching process ($pid) is not running.\n");
+  			dc_log("Caching process ($pid) is not running.");
   		}
 	}
 
@@ -110,12 +159,12 @@ function deletecity_deactivate()
 	// Unregister the scheduled events
 	if($timestamp = wp_next_scheduled('runcache_function_hook'))
 	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Removing caching event from schedule\n");
+		dc_log("Removing caching event from schedule");
 		wp_unschedule_event($timestamp, 'runcache_function_hook' );
 	}
 	if($timestamp = wp_next_scheduled('post_videos_function_hook'))
 	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Removing posting event from schedule\n");
+		dc_log("Removing posting event from schedule");
 		wp_unschedule_event($timestamp, 'post_videos_function_hook' );
 	}
 }
@@ -126,13 +175,12 @@ function deletecity_deactivate()
 add_action( 'runcache_function_hook', 'runcache' );
 function runcache()
 {
-	$logfile =  dirname(__FILE__)."/deletecity.log";
-	$fh = fopen($logfile, 'a');
-	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Starting runcache\n");
-	$runcache = dirname(__FILE__)."/runcache.php";
+	global $dclogfile, $runcache, $rate_limit, $max_age;
+
+	dc_log("Starting runcache");
 	
 	// run the cachiing process in the background.
-	`$runcache >> $logfile 2>&1 &`;
+	`php $runcache --ratelimit=$rate_limit --maxage=$max_age >> $dclogfile 2>&1 &`;
 }
 
 
@@ -141,14 +189,11 @@ function runcache()
 add_action( 'post_videos_function_hook', 'post_removed_videos' );
 function post_removed_videos()
 {	
-	$logfile =  dirname(__FILE__)."/deletecity.log";
-	$fh = fopen($logfile, 'a');
-	
 	$videos = Video::get_unposted_removed();
 	
 	if(count($videos) < 1)
 	{
-		fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." No videos to post\n");
+		dc_log("No videos to post");
 		return;
 	}
 	
@@ -172,7 +217,7 @@ function post_removed_videos()
 	);
 	
 	// Insert the post into the database
-	fwrite($fh, "[deletecity] ".date("F j, Y, g:i a")." Adding posts of removed videos\n");
+	dc_log("Adding posts of removed videos");
 	wp_insert_post( $my_post );
 }
 
@@ -181,15 +226,56 @@ function post_removed_videos()
 // ADMIN MENU
 if ( is_admin() )
 {
-	require_once("common.php");
-	
 	add_action('admin_menu', 'deletecity_admin_menu');
 	function deletecity_admin_menu()
 	{
-		add_options_page('Delete City', 'Delete City', 'administrator', 'deletecity', 'deletecity_html_page');
+		add_options_page('Delete City Settings', 'Delete City Settings', 'administrator', 'deletecity', 'deletecity_settings_page');
+		add_plugins_page("Delete City Stats", "Delete City Stats", 'administrator', 'deletecity-stats', 'deletecity_stats_page' );
 	}
 	
-	function deletecity_html_page()
+	function deletecity_stats_page()
+	{
+		global $dcdb, $cache_dir, $dclogfile;
+		?>
+		
+		<div style="padding-bottom: 40px;";>
+			<h2>Delete City Stats</h2>
+			
+			<h4>Caching Status</h4>
+			<?php if(file_exists(dirname(__FILE__)."/runcache.php.pid")): ?>
+			<p>The caching process is currently running.</p>
+			<?php else: ?>
+			<p>The caching process is not running.</p>
+			<?php endif;
+			$ar=getDirectorySize($cache_dir); 
+			?>
+			
+			<h4>Cache Directory</h4>
+			<b>Path:</b> <?php echo $cache_dir; ?><br /> 
+			<b>Total size:</b> <?php echo sizeFormat($ar['size']); ?><br /> 
+			<b>No. of videos:</b> <?php echo $ar['count']; ?><br /> 
+
+			<h4>Log</h4>
+			<textarea name="log" id="log" style="width: 98%; height: 300px;"><?php readfile($dclogfile); ?></textarea>
+			<script type="text/javascript">
+			setInterval("log.scrollTop = log.scrollHeight", 1000);
+			</script>
+			
+			<h4>Videos</h4>
+			<?php
+			$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed>0", SQLITE_ASSOC, $query_error); 
+			if ($query_error)
+				die("Error: $query_error"); 
+				
+			if (!$result)
+				die("Error: Impossible to execute query.");
+			?>
+			<b>Removed Videos Found:</b> <?=$result->numRows()?><br />
+		</div>
+		<?php
+	}
+		
+	function deletecity_settings_page()
 	{
 		global $dcdb;
 	

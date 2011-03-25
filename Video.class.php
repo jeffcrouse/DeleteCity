@@ -1,6 +1,5 @@
 <?php
 require_once("common.php");
-require_once("config.php");
 
 class Video {
 	

@@ -1,15 +1,19 @@
-#!/usr/bin/php -dmemory_limit=512M -dsafe_mode=Off
 <?php
 require_once("common.php");
-require_once("config.php");
 require_once("Video.class.php");
 require_once("pid.class.php");
 libxml_use_internal_errors(true);
-
+date_default_timezone_set('UTC'); 
 
 $start_time = time();
 print "Status: Cache starting at " . date("F j, Y, g:i a") . "\n\n";
 
+$args = parseArgs($_SERVER['argv']);
+$max_age = $args['maxage'];
+$rate_limit = isset($args['ratelimit']) ? $args['ratelimit'] : '500k';
+
+print "Status: Max Age: Rate Limit: $max_age\n";
+print "Status: Rate Limit: $rate_limit\n";
 
 
 /*******************************
@@ -18,6 +22,12 @@ print "Status: Cache starting at " . date("F j, Y, g:i a") . "\n\n";
 *
 *******************************/
 
+if(empty($max_age))
+{
+	print "Error: You must provide the maxage argument\n";
+	exit;
+}
+
 $pid = new pid( dirname(__FILE__) );
 if($pid->already_running)
 {
@@ -25,6 +35,7 @@ if($pid->already_running)
 	exit;
 }
 
+$youtube_dl = dirname(__FILE__)."/youtube-dl";
 if(!file_exists($youtube_dl))
 {
 	print "Error: $youtube_dl not found";
@@ -48,7 +59,6 @@ if(!is_writable($cache_dir))
 *	CACHING PROCESS
 *
 *******************************/
-
 
 $result = $dcdb->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
 if ($query_error)
