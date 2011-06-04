@@ -44,14 +44,23 @@ $rate_limit="100k";	// Max speed that the videos will be downloaded
 // --------------------------------------------------------------------------
 // WARNINGS
 add_action('admin_notices', 'deletecity_warning');
-function deletecity_warning() {
+function deletecity_warning()
+{
 	global $runcache, $cache_dir;
+	$youtube_dl = dirname(__FILE__)."/youtube-dl";
 	
-	if(!is_executable($runcache)):
+	$not_executable = array();
+	if(!is_executable($runcache)) $not_executable[] = $runcache;
+	if(!is_executable($youtube_dl)) $not_executable[] = $youtube_dl;
+	
+	if(!is_executable($runcache) || !is_executable($youtube_dl)):
 	?>
 	<div class='error fade'>
 		<p>
-		<strong>DeleteCity has detected a problem. <?php echo $runcache; ?> needs to be executable.</strong> 
+		<strong>DeleteCity has detected a problem. The following files need to be executable.</strong> 
+		<ul><li>
+		<?php echo implode($not_executable, "</li><li>"); ?>
+		</li></ul>
 		<a target="_blank" href="http://www.xaviermedia.com/documents/chmod755.php">How do I make a file executable?</a>
 		</p>
 	</div>
@@ -129,32 +138,7 @@ function deletecity_activate()
 register_deactivation_hook( __FILE__, 'deletecity_deactivate' );
 function deletecity_deactivate()
 {	
-	// Kill the runcache process if it is running.
-	$pid_file = dirname(__FILE__)."/runcache.php.pid";
-	if(file_exists($pid_file))
-	{
-		$pid = (int)trim(file_get_contents($pid_file));
-  		if(posix_kill($pid, 0)) // see if process is running
-  		{
-  			posix_kill($pid, 9);
-			$error = posix_get_last_error();
-			if($error==0)
-			{
-				dc_log("Killed process $pid");
-			}
-			else
-			{
-				dc_log("Warning: Couldn't kill caching process ($pid).");
-				dc_log(posix_strerror($error));
-			}
-  		}
-  		else
-  		{
-  			dc_log("Caching process ($pid) is not running.");
-  		}
-	}
-
-	//`ps -ef | grep runcache | grep -v grep | awk '{print $2}' | xargs kill -9`;
+	stopcache();
 	
 	// Unregister the scheduled events
 	if($timestamp = wp_next_scheduled('runcache_function_hook'))
@@ -183,6 +167,37 @@ function runcache()
 	`php $runcache --ratelimit=$rate_limit --maxage=$max_age >> $dclogfile 2>&1 &`;
 }
 
+
+// --------------------------------------------------------------------------
+function stopcache()
+{
+	// Kill the runcache process if it is running.
+	$pid_file = dirname(__FILE__)."/runcache.php.pid";
+	if(file_exists($pid_file))
+	{
+		$pid = (int)trim(file_get_contents($pid_file));
+  		if(posix_kill($pid, 0)) // see if process is running
+  		{
+  			posix_kill($pid, 9);
+			$error = posix_get_last_error();
+			if($error==0)
+			{
+				dc_log("Killed process $pid");
+			}
+			else
+			{
+				dc_log("Warning: Couldn't kill caching process ($pid).");
+				dc_log(posix_strerror($error));
+			}
+  		}
+  		else
+  		{
+  			dc_log("Caching process ($pid) is not running.");
+  		}
+	}
+
+	//`ps -ef | grep runcache | grep -v grep | awk '{print $2}' | xargs kill -9`;
+}
 
 // --------------------------------------------------------------------------
 // POSTING EVENT
@@ -226,6 +241,53 @@ function post_removed_videos()
 // ADMIN MENU
 if ( is_admin() )
 {
+	// Handle submitted data
+	if(isset($_REQUEST['dc_do_action']) && $_REQUEST['dc_do_action']=='true')
+	{
+		switch($_REQUEST['action'])
+		{
+			case 'stopcache':
+				stopcache();
+				break;
+			case 'runcache':
+				runcache();
+				break;
+			case 'post_videos':
+				post_removed_videos();
+				break;
+		}
+	}
+
+	if(isset($_REQUEST['dc_submit_options']) && $_REQUEST['dc_submit_options']=='true')
+	{
+		$dcdb->queryExec("DELETE FROM sources;", $query_error);
+		if ($query_error)
+		{
+			die("Error: $query_error");
+		}
+		$sources = explode("\n", $_REQUEST['dc-sources']);
+		foreach($sources as $source)
+		{
+			$source=trim($source);
+			if(empty($source))
+			{
+				continue;
+			}
+			$source = sqlite_escape_string($source);
+			$dcdb->queryExec("INSERT INTO sources (feed_url) VALUES('$source');", $query_error);
+			if ($query_error)
+			{
+				die("Error: $query_error");
+			}
+		}
+	
+		update_option('cache_schedule', $_REQUEST['dc-cache-schedule']);
+		update_option('post_schedule',  $_REQUEST['dc-post-schedule']);
+		deletecity_deactivate();
+		deletecity_activate();	
+	}
+
+
 	add_action('admin_menu', 'deletecity_admin_menu');
 	function deletecity_admin_menu()
 	{
@@ -236,45 +298,69 @@ if ( is_admin() )
 	function deletecity_stats_page()
 	{
 		global $dcdb, $cache_dir, $dclogfile;
+		$x = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
 		?>
 		
 		<div style="padding-bottom: 40px;";>
 			<h2>Delete City Stats</h2>
 			
-			<h4>Caching Status</h4>
 			<?php if(file_exists(dirname(__FILE__)."/runcache.php.pid")): ?>
-			<p>The caching process is currently running.</p>
+			<p style="color:#00ff00; font-weight: bold;">The caching process is currently running. <img src="<?php echo $x; ?>/ajax-loader.gif" /></p>
 			<?php else: ?>
 			<p>The caching process is not running.</p>
 			<?php endif;
 			$ar=getDirectorySize($cache_dir); 
 			?>
 			
-			<h4>Cache Directory</h4>
 			<b>Path:</b> <?php echo $cache_dir; ?><br /> 
 			<b>Total size:</b> <?php echo sizeFormat($ar['size']); ?><br /> 
-			<b>No. of videos:</b> <?php echo $ar['count']; ?><br /> 
-
-			<h4>Log</h4>
-			<textarea name="log" id="log" style="width: 98%; height: 300px;"><?php readfile($dclogfile); ?></textarea>
-			<script type="text/javascript">
-			setInterval("log.scrollTop = log.scrollHeight", 1000);
-			</script>
-			
-			<h4>Videos</h4>
+			<b>Videos in cache:</b> <?php echo $ar['count']; ?><br /> 
 			<?php
 			$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed>0", SQLITE_ASSOC, $query_error); 
 			if ($query_error)
 				die("Error: $query_error"); 
-				
 			if (!$result)
 				die("Error: Impossible to execute query.");
 			?>
 			<b>Removed Videos Found:</b> <?=$result->numRows()?><br />
+
+			<h4>Log</h4>
+			<textarea readonly name="log" id="log" style="width: 98%; height: 300px;"><?php //readfile($dclogfile); ?></textarea>
+			
+			<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js"></script>
+			<script type="text/javascript">
+			//setInterval("log.scrollTop = log.scrollHeight", 1000);
+			$.ajaxSetup({cache:false});
+			function refresh_log()
+			{
+				$("#log").load("<?php echo $x ?>/deletecity.log", function() {
+					$("#log").scrollTop($("#log")[0].scrollHeight);
+				});
+			}
+			refresh_log();
+			setInterval(refresh_log, 5000);
+			</script>
+			
+			<p>
+				<form method="post" action="">
+				<?php if(file_exists(dirname(__FILE__)."/runcache.php.pid")): ?>
+				<button name="action" value="stopcache" type="submit">Stop Cache Now</button>
+				<?php else: ?>
+				<button name="action" value="runcache" type="submit">Run Cache Now</button>
+				<?php endif; ?>
+				<button name="action" value="post_videos" type="submit">Post Videos Now</button>
+				<input type="hidden" name="dc_do_action" value="true" />
+				</form>
+			</p>
+
 		</div>
 		<?php
 	}
-		
+	
+
+	
+	//--------------------------------------
+	// Render the settings page
 	function deletecity_settings_page()
 	{
 		global $dcdb;
@@ -344,38 +430,6 @@ if ( is_admin() )
 		</form>
 		</div>
 	<?php
-	}
-	
-	// Handle submitted data
-	if(isset($_REQUEST['dc_submit_options']) && $_REQUEST['dc_submit_options']=='true')
-	{
-		$dcdb->queryExec("DELETE FROM sources;", $query_error);
-		if ($query_error)
-		{
-			die("Error: $query_error");
-		}
-		$sources = explode("\n", $_REQUEST['dc-sources']);
-		foreach($sources as $source)
-		{
-			$source=trim($source);
-			if(empty($source))
-			{
-				continue;
-			}
-			$source = sqlite_escape_string($source);
-			$dcdb->queryExec("INSERT INTO sources (feed_url) VALUES('$source');", $query_error);
-			if ($query_error)
-			{
-				die("Error: $query_error");
-			}
-		}
-	
-		update_option('cache_schedule', $_REQUEST['dc-cache-schedule']);
-		update_option('post_schedule',  $_REQUEST['dc-post-schedule']);
-	
-		deletecity_deactivate();
-		deletecity_activate();	
-	}
-	
+	}	
 }
 ?>

@@ -13,6 +13,7 @@ class Video {
 	var $date_added;
 	var $seen_in_feed;
 	var $expired=false;
+	var $date_posted=NULL;
 	
 	// other
 	var $age=0;
@@ -28,7 +29,7 @@ class Video {
 		$this->youtube_id = $youtube_id;
 		$this->vid_path = "{$cache_dir}/{$youtube_id}.mp4";
 		
-		$sql="SELECT id, title, content, author, date_added, seen_in_feed, removed, expired,
+		$sql="SELECT id, title, content, author, date_added, seen_in_feed, removed, expired, date_posted,
 			round(strftime('%J', datetime('now'))-strftime('%J', seen_in_feed), 2) as age
 			FROM videos WHERE youtube_id='{$youtube_id}'";
 			
@@ -53,6 +54,7 @@ class Video {
 			$this->removed = 		$row['removed'];
 			$this->expired = 		$row['expired'];
 			$this->age = 			$row['age'];
+			$this->date_posted = 	$row['date_posted'];
 			$this->in_db =			true;
 		}
 	}
@@ -136,7 +138,7 @@ class Video {
 	function mark_as_posted()
 	{
 		global $dcdb;
-		$sql="UPDATE videos SET posted=1 WHERE youtube_id='{$this->youtube_id}'";	
+		$sql="UPDATE videos SET date_posted=DATETIME('now') WHERE youtube_id='{$this->youtube_id}'";	
 		$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 		if ($query_error)
 		{
@@ -157,14 +159,14 @@ class Video {
 		
 		if($this->in_db)
 		{
-			$sql=sprintf("UPDATE videos SET title='%s', content='%s', author='%s', removed=%d, expired=%d, posted=%d
+			$sql=sprintf("UPDATE videos SET title='%s', content='%s', author='%s', removed=%d, expired=%d, date_posted=%d
 				WHERE youtube_id='%s'",
 				sqlite_escape_string($this->title),
 				sqlite_escape_string($this->content),
 				sqlite_escape_string($this->author),
 				$this->removed ? 1 : 0,
 				$this->expired ? 1 : 0,
-				$this->posted ? 1 : 0,
+				$this->date_posted,
 				sqlite_escape_string($this->youtube_id) );	
 			$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)
@@ -195,7 +197,7 @@ class Video {
 		global $dcdb;
 		
 		$videos = array();
-		$sql = "SELECT youtube_id FROM videos WHERE removed=1 AND posted=0";
+		$sql = "SELECT youtube_id FROM videos WHERE removed=1 AND date_posted=NULL";
 	
 		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
 		if ($query_error)

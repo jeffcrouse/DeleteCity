@@ -1,6 +1,8 @@
 <?php
 date_default_timezone_set('UTC'); 
 
+// This file is included by both the plugin file and runcache.php, which doesn't have all of the 
+// WP_ constants and stuff.  So we need 2 different definitions.
 if(defined("WP_CONTENT_DIR"))
 {
 	// The directory where the videos are stored
@@ -42,7 +44,7 @@ if (!$q)
 		seen_in_feed 	DATETIME NOT NULL,
 		removed			Boolean NULL DEFAULT 0,
 		expired			Boolean NULL DEFAULT 0,
-		posted			Boolean NULL DEFAULT 0
+		date_posted 	DATETIME NULL
 	);
 	CREATE TABLE sources (
 		id 				INTEGER PRIMARY KEY NULL, 

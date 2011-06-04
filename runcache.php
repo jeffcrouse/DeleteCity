@@ -76,7 +76,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 
 	if(strpos($url, "http://gdata.youtube.com/feeds/api/")!=0)
 	{
-		print "Error:  [$cur_feed/$num_feeds] Must be a gdata.youtube.com/feeds/api feed\n";
+		print "Error: [$cur_feed/$num_feeds] Must be a gdata.youtube.com/feeds/api feed\n";
 		continue;
 	}
 
