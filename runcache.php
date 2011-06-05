@@ -23,10 +23,11 @@ print "Status: pid ". getmypid()." starting at " . date("F j, Y, g:i a") . "\n";
 $args = parseArgs($_SERVER['argv']);
 $max_age = $args['maxage'];
 $rate_limit = isset($args['ratelimit']) ? $args['ratelimit'] : '500k';
-$cache_dir = $args['cachedir'];
+Video::$cache_dir = $args['cachedir'];
 $dcdbfile = $args['db'];
 
-print "\tMax Age: $max_age \n\tRate Limit: $rate_limit \n\tCache Dir: $cache_dir\n\tDatabase: $dcdbfile\n\n";
+
+print "\tMax Age: $max_age \n\tRate Limit: $rate_limit \n\tCache Dir: {$args['cachedir']}\n\tDatabase: $dcdbfile\n\n";
 
 
 /*******************************
@@ -91,14 +92,14 @@ if(!is_executable($youtube_dl))
 	exit;
 }
 
-if(!file_exists($cache_dir))
+if(!file_exists(Video::$cache_dir))
 {
-	mkdir($cache_dir, 0777, true);
+	mkdir(Video::$cache_dir, 0777, true);
 }
 
-if(!is_writable($cache_dir))
+if(!is_writable(Video::$cache_dir))
 {
-	print "Error: $cache_dir is not writable.\n";
+	print "Error: ".Video::$cache_dir." is not writable.\n";
 	exit;
 }
 
@@ -174,7 +175,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 		$vid_url = $entry->link[0]['href'];				// TO DO:  We can't be sure that the href is element 0
 		preg_match("/v=([^&]+)/", $vid_url, $matches);
 
-		$video = new Video( $cache_dir, $matches[1] );
+		$video = new Video( $matches[1] );
 		
 		// If we need to download the video, do it!
 		if(!$video->expired && !file_exists($video->vid_path))
@@ -182,6 +183,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 			print "\tStatus: [$cur_vid/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
 
 			// http://rg3.github.com/youtube-dl/documentation.html#d6
+			$cache_dir = Video::$cache_dir;
 			`$youtube_dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
 		}
 		
@@ -221,7 +223,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 *******************************/
 
 print "Status: Checking for orphans\n";
-$dhandle = opendir($cache_dir);
+$dhandle = opendir(Video::$cache_dir);
 if ($dhandle)
 {
 	while (false !== ($fname = readdir($dhandle)))
@@ -232,7 +234,7 @@ if ($dhandle)
 			$youtube_id = $path_parts['filename'];
 			if(!empty($youtube_id))
 			{
-				$video = new Video( $cache_dir, $youtube_id );
+				$video = new Video( $youtube_id );
 				if(!$video->in_db)
 				{
 					if($video->fetch_info()) 
@@ -274,7 +276,7 @@ $total = $result->numRows();
 $i=1;
 while($row = $result->fetch(SQLITE_ASSOC))
 { 
-	$video = new Video( $cache_dir, $row['youtube_id'] );
+	$video = new Video( $row['youtube_id'] );
 
 	if($video->check_remote())
 	{

@@ -189,7 +189,7 @@ function display_xml_error($error, $xml)
 
 
 // ------------------------------------
-function getDirectorySize($path) 
+function getDirectorySize($path, $this_ext_only=null) 
 { 
 	$totalsize = 0; 
 	$totalcount = 0; 
@@ -199,7 +199,9 @@ function getDirectorySize($path)
 		while (false !== ($file = readdir($handle))) 
 		{ 
 			$nextpath = $path . '/' . $file; 
-			if ($file != '.' && $file != '..' && !is_link ($nextpath)) 
+			$ext = end(explode('.', $nextpath));
+			$skip = $ext!=null && $ext!=$this_ext_only;
+			if (!$skip && $file != '.' && $file != '..' && !is_link($nextpath)) 
 			{ 
 				if (is_dir ($nextpath)) 
 				{ 

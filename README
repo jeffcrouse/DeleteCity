@@ -36,7 +36,7 @@ INSTALL
 To install the bleeding-edge version, try this:
 
 cd [wordpress root]/wp-content/plugins
-git clone --recursive https://github.com/jefftimesten/DeleteCity.git
+git clone https://github.com/jefftimesten/DeleteCity.git
 
 
 REQUIREMENTS
@@ -62,6 +62,10 @@ find out more about it here:  http://rg3.github.com/youtube-dl/
 TO DO
 =========================
 
+-- "RUN CACHE NOW" button doesn't reflect change on press
+
+-- in deletecity.php, turn max_age and ratelimit into WP options
+
 -- Can I include some file in runcache that will allow me to get Wordpress options? That would allow me to avoid all of this parameter passing...
 
 -- Get rid of pid.class.php -- not really using it properly anyway. Just use trim(`ps aux | grep runcache | grep -v grep`);
@@ -73,8 +77,6 @@ TO DO
 -- Add video enclosures on video page so you can click and watch immediately
 
 - Paginate videos!
-
--- add proxy.conf -- a list of proxies to use randomly IF youtube-dl starts returning errors
 
 -- Testing if video had been removed: testing for presence of <?xml in response probably isn't good enough.  Here are some removed videos to test with.
 http://www.youtube.com/watch?v=eouvTRd6szQ 				account terminated

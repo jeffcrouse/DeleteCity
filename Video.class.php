@@ -21,14 +21,21 @@ class Video {
 	var $thumb_path;
 	var $in_db=false;
 
+	public static $cache_dir;
+
 	// ----------------------------------------------
-	function Video( $cache_dir, $youtube_id )
+	function Video( $youtube_id )
 	{
-		global $dcdb;
-	
+		global $dcdb;	
+		
+		if(!isset(Video::$cache_dir))
+		{
+			throw new Exception("You must set Video::$cache_dir before constructing any Videos.");
+		}
+		
 		$this->youtube_id = $youtube_id;
-		$this->vid_path = "{$cache_dir}/{$youtube_id}.mp4";
-		$this->thumb_path = "{$cache_dir}/{$youtube_id}.jpg";
+		$this->vid_path = Video::$cache_dir."/{$youtube_id}.mp4";
+		$this->thumb_path = Video::$cache_dir."/{$youtube_id}.jpg";
 		
 		if(function_exists('content_url'))
 		{
@@ -252,4 +259,6 @@ class Video {
 		return $videos;
 	}
 }
+
+
 ?>
