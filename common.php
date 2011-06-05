@@ -1,72 +1,6 @@
 <?php
-require_once("Video.class.php");
-date_default_timezone_set('UTC'); 
 
-// This file is included by both the plugin file and runcache.php, which doesn't have all of the 
-// WP_ constants and stuff.  So we need 2 different definitions.
-if(defined("WP_CONTENT_DIR"))
-{
-	// The directory where the videos are stored
-	//$cache_dir = WP_CONTENT_DIR."/dc_cache";
-	
-	// Where the SQLite database will be stored
-	$dcdbfile =  WP_CONTENT_DIR."/deletecity.rsd";
-}
-else
-{
-	// The directory where the videos are stored
-	//$cache_dir = dirname(__FILE__)."/../../dc_cache";
-	
-	// Where the SQLite database will be stored
-	$dcdbfile = dirname(__FILE__)."/../../deletecity.rsd";
-}
-
-
-$dcdb = new SQLiteDatabase($dcdbfile);
-if (!$dcdb)
-{
-	$error = (file_exists($dcdbfile)) 
-		? "Error: Impossible to open database file, check permissions\n" 
-		: "Error: Impossible to create database file, check permissions\n";
-	die($error);
-}
-
-$q = @$dcdb->query("SELECT id FROM videos WHERE id=1");
-if (!$q)
-{
-	$dcdb->queryExec("
-	CREATE TABLE videos (
-		id 				INTEGER PRIMARY KEY NULL, 
-		youtube_id		VarChar NULL UNIQUE,
-		title 			CHAR(255) NULL,
-		content			Text NULL,
-		author			CHAR(255) NULL,
-		date_added 		DATETIME NOT NULL,
-		seen_in_feed 	DATETIME NOT NULL,
-		removed			Boolean NULL DEFAULT 0,
-		expired			Boolean NULL DEFAULT 0,
-		date_posted 	DATETIME NULL
-	);
-	CREATE TABLE sources (
-		id 				INTEGER PRIMARY KEY NULL, 
-		feed_url		VarChar NOT NULL
-	);
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_recent?&orderby=published&max-results=50'); 
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_recent?&orderby=published&max-results=50&start-index=51'); 
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_discussed'); 
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/top_rated'); 
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_viewed');
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/videos?q=slow+loris&orderby=published&max-results=25');", 
-	$query_error);
-	if ($query_error)
-		die("Error: $query_error");
-}
-
-
-
-
-// FUNCTIONS
-
+// ------------------------------------
 function get_web_page( $url )
 {
     $ch      = curl_init( $url );
@@ -185,9 +119,9 @@ function parseArgs($argv){
 	return $out;
 }
 
-/**
- * GET BOOLEAN
- */
+
+
+// ------------------------------------
 function getBoolean($key, $default = false){
 	if (!isset(self::$args[$key])){
 		return $default;
@@ -220,6 +154,9 @@ function getBoolean($key, $default = false){
 	return $default;
 }
 
+
+
+// ------------------------------------
 function display_xml_error($error, $xml)
 {
     $return  = $xml[$error->line - 1] . "\n";
@@ -251,6 +188,7 @@ function display_xml_error($error, $xml)
 }
 
 
+// ------------------------------------
 function getDirectorySize($path) 
 { 
 	$totalsize = 0; 
@@ -286,6 +224,8 @@ function getDirectorySize($path)
 	return $total; 
 } 
 
+
+// ------------------------------------
 function sizeFormat($size) 
 { 
     if($size<1024) 

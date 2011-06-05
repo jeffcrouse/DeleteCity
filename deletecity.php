@@ -31,9 +31,12 @@ if ( !function_exists( 'add_action' ) ) {
 }
 
 require_once("common.php");
-//ini_set('display_errors', 1); 
-//error_reporting(E_ALL);
+require_once("Video.class.php");
+require_once("dcdb.php");
 
+ini_set('display_errors', 1); 
+error_reporting(E_ALL);
+date_default_timezone_set('UTC'); 
 
 global $dcdb, $dclogfile, $runcache;
 $dclogfile = dirname(__FILE__)."/deletecity.log";
@@ -126,6 +129,11 @@ function deletecity_activate()
 		add_option('dc_cache_dir', WP_CONTENT_DIR."/dc_cache");
 	}
 	
+	if(!get_option('dc_db_file'))
+	{
+		add_option('dc_db_file',  WP_CONTENT_DIR."/deletecity.rsd");
+	}
+	
 	// Add the two events to th eschedule
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
@@ -142,8 +150,7 @@ function deletecity_activate()
 
 
 // --------------------------------------------------------------------------
-// DEACTIVATION - remove caching and posting events.  
-// Also kill caching process if it is running
+// DEACTIVATION - kill cache process, remove caching and posting events.  
 register_deactivation_hook( __FILE__, 'deletecity_deactivate' );
 function deletecity_deactivate()
 {	
@@ -179,8 +186,9 @@ function runcache()
 	dc_log("Starting runcache");
 	
 	$dir = get_option('dc_cache_dir');
+	$db = get_option('dc_db_file');
 	// run the cachiing process in the background.
-	`php $runcache --ratelimit=$rate_limit --maxage=$max_age --cachedir=$dir >> $dclogfile 2>&1 &`;
+	`php $runcache --ratelimit=$rate_limit --maxage=$max_age --cachedir=$dir --db=$db >> $dclogfile 2>&1 &`;
 }
 
 
@@ -189,10 +197,15 @@ function stopcache()
 {
 	// Kill the runcache process if it is running.
 	// It would be great to use the pcntl here, but it's not widely supported
-	$pid_file = dirname(__FILE__)."/runcache.php.pid";
-	if(file_exists($pid_file))
+	$process = trim(`ps aux | grep runcache | grep -v grep`);
+	if(empty($process))
 	{
-		$pid = (int)trim(file_get_contents($pid_file));
+		dc_log("Caching process is not running.");
+	}
+	else
+	{
+		$parts = preg_split("|\s+|", $process);
+		$pid = (int)$parts[1];
   		if(posix_kill($pid, 0)) // see if process is running
   		{
   			posix_kill($pid, 9);
@@ -200,7 +213,11 @@ function stopcache()
 			if($error==0)
 			{
 				dc_log("Killed process $pid");
-				unlink($pid_file);
+				$pid_file = dirname(__FILE__)."/runcache.php.pid";
+				if(file_exists($pid_file))
+				{
+					unlink($pid_file);
+				}
 			}
 			else
 			{
@@ -212,10 +229,6 @@ function stopcache()
   		{
   			dc_log("Caching process ($pid) is not running.");
   		}
-	}
-	else
-	{
-		dc_log("Caching process is not running.");
 	}
 }
 
@@ -276,6 +289,7 @@ if ( is_admin() )
 				post_removed_videos();
 				break;
 			case 'save_options':
+				
 				$dcdb->queryExec("DELETE FROM sources;", $query_error);
 				if ($query_error)
 				{
@@ -305,6 +319,7 @@ if ( is_admin() )
 	}
 
 
+	// --------------------------------------------
 	add_action('admin_menu', 'deletecity_admin_menu');
 	function deletecity_admin_menu()
 	{
@@ -312,11 +327,12 @@ if ( is_admin() )
 		add_plugins_page("Delete City Status", "Delete City Status", 'administrator', 'deletecity-status', 'deletecity_status_page' );
 	}
 
-		
+
 	// --------------------------------------------
 	function deletecity_status_page()
 	{
-		global $dcdb, $dclogfile;
+		global $dclogfile, $dcdb;
+		
 		$x = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
 		$process = trim(`ps aux | grep runcache | grep -v grep`);
 		?>
@@ -330,21 +346,9 @@ if ( is_admin() )
 				<img src="<?php echo $x; ?>/ajax-loader.gif" /> <a title="<?php echo  $process; ?>">The cache process is running.</a>
 			<?php endif; ?>
 			<br />
-			<!--
-			<?php
-			$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed>0", SQLITE_ASSOC, $query_error); 
-			if ($query_error)
-				die("Error: $query_error"); 
-			if (!$result)
-				die("Error: Impossible to execute query.");
-			?>
-			<b>Removed Videos Found:</b> <?=$result->numRows()?><br />
-			-->
-			
-			
+
 			<textarea readonly name="log" id="log" style="width: 95%; height: 100px;"></textarea>
-			
-			
+
 			<p>
 			<form method="post" action="">
 				<?php if(empty($process)): ?>
@@ -471,13 +475,17 @@ if ( is_admin() )
 	
 		<div>
 		<h2>Delete City Options</h2>
-		<?php if(file_exists(dirname(__FILE__)."/runcache.php.pid")): ?>
+		<?php $process = trim(`ps aux | grep runcache | grep -v grep`); ?>
+		<?php if(!empty($process)): ?>
 		<p style="color: #FF0000;">WARNING:  The caching process is currently running.  Saving options now will restart it.</p>
 		<?php endif; ?>
 		<form method="post" action="">
 
 			<h3>Cache Directory</h3>
-			<input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 90%;" />
+			<input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 90%;" disabled />
+
+			<h3>Database File</h3>
+			<input name="dc-db-file" type="text" value="<?php echo get_option('dc_db_file'); ?>"  style="width: 90%;" disabled />
 
 			<h3>Cache Frequency</h3>
 			<p>How often should DeleteCity download videos from the sources?</p>

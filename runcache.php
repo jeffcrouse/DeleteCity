@@ -1,6 +1,9 @@
 <?php
+require_once("Video.class.php");
 require_once("common.php");
 require_once("pid.class.php");
+require_once("dcdb.php");
+date_default_timezone_set('UTC'); 
 libxml_use_internal_errors(true);
 $pid = new pid( dirname(__FILE__) );
 $start_time = time();
@@ -21,8 +24,9 @@ $args = parseArgs($_SERVER['argv']);
 $max_age = $args['maxage'];
 $rate_limit = isset($args['ratelimit']) ? $args['ratelimit'] : '500k';
 $cache_dir = $args['cachedir'];
+$dcdbfile = $args['db'];
 
-print "Status: Max Age: $max_age Rate Limit: $rate_limit Cache Dir: $cache_dir\n";
+print "\tMax Age: $max_age \n\tRate Limit: $rate_limit \n\tCache Dir: $cache_dir\n\tDatabase: $dcdbfile\n\n";
 
 
 /*******************************
