@@ -358,6 +358,8 @@ if ( is_admin() )
 			</p>
 			
 			<h2>Videos</h2>
+			<p>all <input type="radio" name="filter" value="all" checked /> removed <input type="radio" name="filter" value="removed" /></p>
+			
 			<div id="videos" style="width: 95%;"></div>				
 			
 			<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js"></script>
@@ -365,7 +367,9 @@ if ( is_admin() )
 			$.ajaxSetup({cache:false});
 			function refresh_dc()
 			{
-				$("#videos").load(ajaxurl, {action: 'dc_get_vids', page: '1'});
+				var filter = $('input[name=filter]:checked').val();
+				var data = {action: 'dc_get_vids', page: '1', 'filter': filter};
+				$("#videos").load(ajaxurl, data);
 				$("#log").load("<?php echo $x ?>/deletecity.log", function() {
 					$("#log").scrollTop($("#log")[0].scrollHeight);
 				});
@@ -386,8 +390,15 @@ if ( is_admin() )
 		global $dcdb, $dclogfile;
 	
 		$page = $_POST['page'];
+		$filter = $_POST['filter'];
 	
-		$result = $dcdb->query("SELECT youtube_id FROM videos ORDER BY date_added DESC", SQLITE_ASSOC, $query_error); 
+		$sql="SELECT youtube_id FROM videos";
+		if($filter=='removed')
+		{
+			$sql .= " WHERE removed>0 ";
+		}
+		$sql .= " ORDER BY date_added DESC";
+		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
 		if ($query_error)
 			die("Error: $query_error"); 
 			
@@ -396,12 +407,19 @@ if ( is_admin() )
 		
 		$total = $result->numRows();
 		$ar=getDirectorySize(get_option('dc_cache_dir')); 
+		echo $filter;
 		?>
 		
 		<b>Total Cache Size:</b> <?php echo floor($ar['count']/2); ?> videos, <?php echo sizeFormat($ar['size']); ?><br /> 
 		<br /> 
 		<?php
-		$i=1;
+		if($total==0)
+		{
+			print "There are no videos that match that request.";
+			die();
+		}
+		
+		$i=$total;
 		
 		while($row = $result->fetch(SQLITE_ASSOC))
 		{ 
@@ -414,11 +432,11 @@ if ( is_admin() )
 				<a href="<?php echo $video->vid_url; ?>" target="_blank">
 					<img src="<?php echo $video->thumb_url; ?>" style="width: 240px; height: 180px;" />
 				</a>
-				<b>age: </b> <?php echo $video->age; ?> days<br />
+				<b>age: </b> <?php echo ($video->age > 1) ? "{$video->age} days" : ($video->age*24)." hours"; ?><br />
 				<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
 			</div>
 			<?php
-			$i++;
+			$i--;
 		}
 		die(); // this is required to return a proper result
 	}
