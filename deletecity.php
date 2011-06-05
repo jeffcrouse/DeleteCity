@@ -172,6 +172,7 @@ function runcache()
 function stopcache()
 {
 	// Kill the runcache process if it is running.
+	// It would be great to use the pcntl here, but it's not widely supported
 	$pid_file = dirname(__FILE__)."/runcache.php.pid";
 	if(file_exists($pid_file))
 	{
@@ -183,6 +184,7 @@ function stopcache()
 			if($error==0)
 			{
 				dc_log("Killed process $pid");
+				unlink($pid_file);
 			}
 			else
 			{
@@ -195,8 +197,10 @@ function stopcache()
   			dc_log("Caching process ($pid) is not running.");
   		}
 	}
-
-	//`ps -ef | grep runcache | grep -v grep | awk '{print $2}' | xargs kill -9`;
+	else
+	{
+		dc_log("Caching process is not running.");
+	}
 }
 
 // --------------------------------------------------------------------------
@@ -299,22 +303,21 @@ if ( is_admin() )
 	{
 		global $dcdb, $cache_dir, $dclogfile;
 		$x = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
+		$process = trim(nl2br(`ps aux | grep runcache | grep -v grep`));
+		$ar=getDirectorySize($cache_dir); 
 		?>
 		
 		<div style="padding-bottom: 40px;";>
 			<h2>Delete City Stats</h2>
-			
-			<?php if(file_exists(dirname(__FILE__)."/runcache.php.pid")): ?>
-			<p style="color:#00ff00; font-weight: bold;">The caching process is currently running. <img src="<?php echo $x; ?>/ajax-loader.gif" /></p>
+ 
+			<?php if(empty($process)): ?>
+				<b>Status:</b> The caching process is not running.<br />
 			<?php else: ?>
-			<p>The caching process is not running.</p>
-			<?php endif;
-			$ar=getDirectorySize($cache_dir); 
-			?>
-			
-			<b>Path:</b> <?php echo $cache_dir; ?><br /> 
-			<b>Total size:</b> <?php echo sizeFormat($ar['size']); ?><br /> 
-			<b>Videos in cache:</b> <?php echo $ar['count']; ?><br /> 
+				<b>Status:</b>  <span style="color:#00ff00; font-weight: bold;"><img src="<?php echo $x; ?>/ajax-loader.gif" /> The cache process is running.</span><br />
+				<?php echo  $process; ?>
+			<?php endif; ?>
+			<b>Cache Directory:</b> <?php echo $cache_dir; ?><br /> 
+			<b>Total Cache Size:</b> <?php echo $ar['count']; ?> videos, <?php echo sizeFormat($ar['size']); ?><br /> 
 			<?php
 			$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed>0", SQLITE_ASSOC, $query_error); 
 			if ($query_error)
@@ -324,7 +327,7 @@ if ( is_admin() )
 			?>
 			<b>Removed Videos Found:</b> <?=$result->numRows()?><br />
 
-			<h4>Log</h4>
+			<br />
 			<textarea readonly name="log" id="log" style="width: 98%; height: 300px;"><?php //readfile($dclogfile); ?></textarea>
 			
 			<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js"></script>

@@ -4,16 +4,58 @@ require_once("Video.class.php");
 require_once("pid.class.php");
 libxml_use_internal_errors(true);
 date_default_timezone_set('UTC'); 
-
+$pid = new pid( dirname(__FILE__) );
 $start_time = time();
-print "Status: Cache starting at " . date("F j, Y, g:i a") . "\n\n";
+
+print "--------------[runcache]--------------\n";
+print "Status: pid ". getmypid()." starting at " . date("F j, Y, g:i a") . "\n";
+
+
+
+/*******************************
+*
+*	PARSE ARGS
+*
+*******************************/
 
 $args = parseArgs($_SERVER['argv']);
 $max_age = $args['maxage'];
 $rate_limit = isset($args['ratelimit']) ? $args['ratelimit'] : '500k';
 
-print "Status: Max Age: Rate Limit: $max_age\n";
+print "Status: Max Age: $max_age\n";
 print "Status: Rate Limit: $rate_limit\n";
+
+
+
+/*******************************
+*
+*	HANDLE SIGNALS
+*
+*******************************/
+if(function_exists('pcntl_signal'))
+{
+	declare(ticks = 1);
+	function sig_handler($signo)
+	{
+		global $pid;
+		switch ($signo) 
+		{
+			case SIGTERM:
+				unset($pid);
+				exit;
+				break;
+			case SIGHUP: break;
+			case SIGUSR1: break;
+			default:
+		}
+	}
+	
+	echo "Status: Installing signal handler...\n";
+	pcntl_signal(SIGTERM, "sig_handler");
+	pcntl_signal(SIGHUP,  "sig_handler");
+	pcntl_signal(SIGUSR1, "sig_handler");
+}
+
 
 
 /*******************************
@@ -28,7 +70,6 @@ if(empty($max_age))
 	exit;
 }
 
-$pid = new pid( dirname(__FILE__) );
 if($pid->already_running)
 {
 	print "Error: runcache is already running.\n";
@@ -38,7 +79,13 @@ if($pid->already_running)
 $youtube_dl = dirname(__FILE__)."/youtube-dl";
 if(!file_exists($youtube_dl))
 {
-	print "Error: $youtube_dl not found";
+	print "Error: $youtube_dl not found\n";
+	exit;
+}
+
+if(!is_executable($youtube_dl))
+{
+	print "Error: $youtube_dl not executable\n";
 	exit;
 }
 
@@ -52,6 +99,7 @@ if(!is_writable($cache_dir))
 	print "Error: $cache_dir is not writable.\n";
 	exit;
 }
+
 
 
 /*******************************
@@ -70,6 +118,8 @@ if (!$result)
 $num_feeds = $result->numRows();
 $cur_feed=1;
 
+
+// Loop through all of the feeds in the database
 while($row = $result->fetch(SQLITE_ASSOC))
 {
 	$url = $row['feed_url'];
@@ -112,11 +162,13 @@ while($row = $result->fetch(SQLITE_ASSOC))
 	
 	// TO DO:  Check to make sure this is a valid YouTube feed
 	// maybe some XPaths to make sure the status is OK and that it has entries, etc.
-	
+
 	$num_vids = count($xmldoc->entry);
 	$cur_vid=1;
+	
+	// Loop through all of the "entries" in the feed.
 	foreach($xmldoc->entry as $entry)
-	{
+	{	
 		$vid_url = $entry->link[0]['href'];				// TO DO:  We can't be sure that the href is element 0
 		preg_match("/v=([^&]+)/", $vid_url, $matches);
 
@@ -154,7 +206,8 @@ while($row = $result->fetch(SQLITE_ASSOC))
 		$cur_vid++;
 	}
 	$cur_feed++;
-}
+	
+} // end while(more YouTube feeds)
 
 
 

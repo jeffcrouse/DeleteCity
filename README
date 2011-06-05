@@ -42,7 +42,7 @@ git clone --recursive https://github.com/jefftimesten/DeleteCity.git
 REQUIREMENTS
 =========================
 
-*nix only!  I use a bunch of system commands that I don't know how to 
+*nix only! (Mac or Linux server) I use a bunch of system commands (mostly for process control) that I don't know how to 
 translate into Windows. I'd love someone to help me, though!
 
 PHP >= 5.1 (according to http://phpduck.com/minimum-php-version-script/)
@@ -86,8 +86,6 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 -- Central database (on deletecity.org) ping when a deleted video is found. (optional for user)
 
--- Make "post now" and "cache now" buttons on the admin page.
-
 -- Use PDO instead of SQLite 
 	http://www.phpro.org/tutorials/Introduction-to-PHP-PDO.html#4.2
 	http://henryranch.net/software/ease-into-sqlite-3-with-php-and-pdo/
@@ -100,5 +98,3 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 	<media:restriction type='country' relationship='deny'>DE</media:restriction>
 	
 -- Check the PHP version at activation
-
--- Change posted (bool) to date_posted (for easier un/re-posting by batch)
