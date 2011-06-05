@@ -20,10 +20,9 @@ print "Status: pid ". getmypid()." starting at " . date("F j, Y, g:i a") . "\n";
 $args = parseArgs($_SERVER['argv']);
 $max_age = $args['maxage'];
 $rate_limit = isset($args['ratelimit']) ? $args['ratelimit'] : '500k';
+$cache_dir = $args['cachedir'];
 
-print "Status: Max Age: $max_age\n";
-print "Status: Rate Limit: $rate_limit\n";
-
+print "Status: Max Age: $max_age Rate Limit: $rate_limit Cache Dir: $cache_dir\n";
 
 
 /*******************************
@@ -171,7 +170,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 		$vid_url = $entry->link[0]['href'];				// TO DO:  We can't be sure that the href is element 0
 		preg_match("/v=([^&]+)/", $vid_url, $matches);
 
-		$video = new Video( $matches[1] );
+		$video = new Video( $cache_dir, $matches[1] );
 		
 		// If we need to download the video, do it!
 		if(!$video->expired && !file_exists($video->vid_path))
@@ -229,7 +228,7 @@ if ($dhandle)
 			$youtube_id = $path_parts['filename'];
 			if(!empty($youtube_id))
 			{
-				$video = new Video( $youtube_id );
+				$video = new Video( $cache_dir, $youtube_id );
 				if(!$video->in_db)
 				{
 					if($video->fetch_info()) 
@@ -271,7 +270,7 @@ $total = $result->numRows();
 $i=1;
 while($row = $result->fetch(SQLITE_ASSOC))
 { 
-	$video = new Video( $row['youtube_id'] );
+	$video = new Video( $cache_dir, $row['youtube_id'] );
 
 	if($video->check_remote())
 	{

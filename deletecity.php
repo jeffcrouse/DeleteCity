@@ -31,11 +31,11 @@ if ( !function_exists( 'add_action' ) ) {
 }
 
 require_once("common.php");
-ini_set('display_errors', 1); 
-error_reporting(E_ALL);
+//ini_set('display_errors', 1); 
+//error_reporting(E_ALL);
 
 
-global $cache_dir, $dcdb, $dclogfile, $runcache;
+global $dcdb, $dclogfile, $runcache;
 $dclogfile = dirname(__FILE__)."/deletecity.log";
 $runcache = dirname(__FILE__)."/runcache.php";
 
@@ -50,7 +50,7 @@ $rate_limit="100k";	// Max speed that the videos will be downloaded
 add_action('admin_notices', 'deletecity_warning');
 function deletecity_warning()
 {
-	global $runcache, $cache_dir;
+	global $runcache;
 	$youtube_dl = dirname(__FILE__)."/youtube-dl";
 	
 	$not_executable = array();
@@ -70,14 +70,14 @@ function deletecity_warning()
 	</div>
 	<?php endif;
 	
-	if(!file_exists($cache_dir))
+	if(!file_exists(get_option('dc_cache_dir')))
 	{
-		mkdir($cache_dir, 0777, true);
+		mkdir(get_option('dc_cache_dir'), 0777, true);
 	}
 	
-	if(!is_writable($cache_dir)): ?>
+	if(!is_writable(get_option('dc_cache_dir'))): ?>
 		<div class='error fade'>
-		<p><strong>DeleteCity has detected a problem. <?php echo $cache_dir; ?> needs to be writable.</strong></p>
+		<p><strong>DeleteCity has detected a problem. <?php echo get_option('dc_cache_dir'); ?> needs to be writable.</strong></p>
 		</div>
 	<?php endif;
 }
@@ -119,6 +119,11 @@ function deletecity_activate()
 	if(!get_option('dc_post_schedule'))
 	{
 		add_option('dc_post_schedule', 'weekly');
+	}
+	
+	if(!get_option('dc_cache_dir'))
+	{
+		add_option('dc_cache_dir', WP_CONTENT_DIR."/dc_cache");
 	}
 	
 	// Add the two events to th eschedule
@@ -173,8 +178,9 @@ function runcache()
 
 	dc_log("Starting runcache");
 	
+	$dir = get_option('dc_cache_dir');
 	// run the cachiing process in the background.
-	`php $runcache --ratelimit=$rate_limit --maxage=$max_age >> $dclogfile 2>&1 &`;
+	`php $runcache --ratelimit=$rate_limit --maxage=$max_age --cachedir=$dir >> $dclogfile 2>&1 &`;
 }
 
 
@@ -303,66 +309,28 @@ if ( is_admin() )
 	function deletecity_admin_menu()
 	{
 		add_options_page('Delete City Settings', 'Delete City Settings', 'administrator', 'deletecity', 'deletecity_settings_page');
-		add_plugins_page("Delete City Stats", "Delete City Stats", 'administrator', 'deletecity-stats', 'deletecity_stats_page' );
-		add_plugins_page("Delete City Videos", "Delete City Videos", 'administrator', 'deletecity-videos', 'deletecity_videos_page' );
+		add_plugins_page("Delete City Status", "Delete City Status", 'administrator', 'deletecity-status', 'deletecity_status_page' );
 	}
-	
-	// --------------------------------------------
-	function deletecity_videos_page()
-	{
-		global $dcdb, $cache_dir, $dclogfile;
-		?>
-		<div style="padding-bottom: 40px;";>
-			<h2>Delete City Videos</h2>
-		<?php
-		$result = $dcdb->query("SELECT youtube_id FROM videos ORDER BY date_added DESC", SQLITE_ASSOC, $query_error); 
-		if ($query_error)
-			die("Error: $query_error"); 
-			
-		if (!$result)
-			die("Error: Impossible to execute query.");
+
 		
-		$total = $result->numRows();
-		$i=1;
-		
-		while($row = $result->fetch(SQLITE_ASSOC))
-		{ 
-			$video = new Video($row['youtube_id'] );
-			?>
-			<div style="width: 250px; float: left; padding-bottom: 20px;">
-				<div style="height: 20px; width: 220px; font-weight: bold;"><?php echo $video->title; ?></div>
-				<a href="<?php echo $video->vid_url; ?>" target="_blank"><img src="<?php echo $video->thumb_url; ?>" style="width: 240px; height: 180px;" /></a>
-				<b>age: </b> <?php echo $video->age; ?> days<br />
-				<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
-			</div>
-			<?php
-			$i++;
-		}
-		?>
-		</div>
-		<?php
-	}
-	
 	// --------------------------------------------
-	function deletecity_stats_page()
+	function deletecity_status_page()
 	{
-		global $dcdb, $cache_dir, $dclogfile;
+		global $dcdb, $dclogfile;
 		$x = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
-		$process = trim(nl2br(`ps aux | grep runcache | grep -v grep`));
-		$ar=getDirectorySize($cache_dir); 
+		$process = trim(`ps aux | grep runcache | grep -v grep`);
 		?>
 		
 		<div style="padding-bottom: 40px;";>
-			<h2>Delete City Stats</h2>
+			<h2>Delete City Status</h2>
  
 			<?php if(empty($process)): ?>
-				<b>Status:</b> The caching process is not running.<br />
+				The caching process is not running.
 			<?php else: ?>
-				<b>Status:</b>  <span style="color:#00ff00; font-weight: bold;"><img src="<?php echo $x; ?>/ajax-loader.gif" /> The cache process is running.</span><br />
-				<?php echo  $process; ?>
+				<img src="<?php echo $x; ?>/ajax-loader.gif" /> <a title="<?php echo  $process; ?>">The cache process is running.</a>
 			<?php endif; ?>
-			<b>Cache Directory:</b> <?php echo $cache_dir; ?><br /> 
-			<b>Total Cache Size:</b> <?php echo floor($ar['count']/2); ?> videos, <?php echo sizeFormat($ar['size']); ?><br /> 
+			<br />
+			<!--
 			<?php
 			$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed>0", SQLITE_ASSOC, $query_error); 
 			if ($query_error)
@@ -371,36 +339,88 @@ if ( is_admin() )
 				die("Error: Impossible to execute query.");
 			?>
 			<b>Removed Videos Found:</b> <?=$result->numRows()?><br />
-
-			<br />
-			<textarea readonly name="log" id="log" style="width: 98%; height: 300px;"></textarea>
+			-->
+			
+			
+			<textarea readonly name="log" id="log" style="width: 95%; height: 100px;"></textarea>
+			
+			
+			<p>
+			<form method="post" action="">
+				<?php if(empty($process)): ?>
+				<button name="action" value="runcache" type="submit">Run Cache Now</button>
+				<?php else: ?>
+				<button name="action" value="stopcache" type="submit">Stop Cache Now</button>
+				<?php endif; ?>
+				<button name="action" value="post_videos" type="submit">Post Videos Now</button>
+				<input type="hidden" name="dc_do_action" value="true" />
+			</form>
+			</p>
+			
+			<h2>Videos</h2>
+			<div id="videos" style="width: 95%;"></div>				
 			
 			<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js"></script>
 			<script type="text/javascript">
 			$.ajaxSetup({cache:false});
-			function refresh_log()
+			function refresh_dc()
 			{
+				$("#videos").load(ajaxurl, {action: 'dc_get_vids', page: '1'});
 				$("#log").load("<?php echo $x ?>/deletecity.log", function() {
 					$("#log").scrollTop($("#log")[0].scrollHeight);
 				});
 			}
-			refresh_log();
-			setInterval(refresh_log, 5000);
+			refresh_dc();
+			setInterval(refresh_dc, 5000);
 			</script>
-			<p>
-				<form method="post" action="">
-					<?php if(empty($process)): ?>
-					<button name="action" value="runcache" type="submit">Run Cache Now</button>
-					<?php else: ?>
-					<button name="action" value="stopcache" type="submit">Stop Cache Now</button>
-					<?php endif; ?>
-					<button name="action" value="post_videos" type="submit">Post Videos Now</button>
-					<input type="hidden" name="dc_do_action" value="true" />
-				</form>
-			</p>
 
 		</div>
 		<?php
+	}
+
+	// --------------------------------------------
+	// http://codex.wordpress.org/AJAX_in_Plugins
+	add_action('wp_ajax_dc_get_vids', 'dc_get_vids');
+	function dc_get_vids()
+	{
+		global $dcdb, $dclogfile;
+	
+		$page = $_POST['page'];
+	
+		$result = $dcdb->query("SELECT youtube_id FROM videos ORDER BY date_added DESC", SQLITE_ASSOC, $query_error); 
+		if ($query_error)
+			die("Error: $query_error"); 
+			
+		if (!$result)
+			die("Error: Impossible to execute query.");
+		
+		$total = $result->numRows();
+		$ar=getDirectorySize(get_option('dc_cache_dir')); 
+		?>
+		
+		<b>Total Cache Size:</b> <?php echo floor($ar['count']/2); ?> videos, <?php echo sizeFormat($ar['size']); ?><br /> 
+		<br /> 
+		<?php
+		$i=1;
+		
+		while($row = $result->fetch(SQLITE_ASSOC))
+		{ 
+			$video = new Video( get_option('dc_cache_dir'), $row['youtube_id'] );
+			?>
+			<div style="width: 250px; float: left; padding-bottom: 20px;">
+				<div style="height: 20px; width: 220px; font-weight: bold;">
+					[<?php echo $i; ?>/<?php echo $total; ?>] <?php echo $video->title; ?>
+				</div>
+				<a href="<?php echo $video->vid_url; ?>" target="_blank">
+					<img src="<?php echo $video->thumb_url; ?>" style="width: 240px; height: 180px;" />
+				</a>
+				<b>age: </b> <?php echo $video->age; ?> days<br />
+				<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
+			</div>
+			<?php
+			$i++;
+		}
+		die(); // this is required to return a proper result
 	}
 
 	
@@ -437,6 +457,9 @@ if ( is_admin() )
 		<p style="color: #FF0000;">WARNING:  The caching process is currently running.  Saving options now will restart it.</p>
 		<?php endif; ?>
 		<form method="post" action="">
+
+			<h3>Cache Directory</h3>
+			<input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 90%;" />
 
 			<h3>Cache Frequency</h3>
 			<p>How often should DeleteCity download videos from the sources?</p>

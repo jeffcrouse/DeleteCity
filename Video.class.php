@@ -22,9 +22,9 @@ class Video {
 	var $in_db=false;
 
 	// ----------------------------------------------
-	function Video( $youtube_id )
+	function Video( $cache_dir, $youtube_id )
 	{
-		global $dcdb, $cache_dir;
+		global $dcdb;
 	
 		$this->youtube_id = $youtube_id;
 		$this->vid_path = "{$cache_dir}/{$youtube_id}.mp4";

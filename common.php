@@ -7,7 +7,7 @@ date_default_timezone_set('UTC');
 if(defined("WP_CONTENT_DIR"))
 {
 	// The directory where the videos are stored
-	$cache_dir = WP_CONTENT_DIR."/dc_cache";
+	//$cache_dir = WP_CONTENT_DIR."/dc_cache";
 	
 	// Where the SQLite database will be stored
 	$dcdbfile =  WP_CONTENT_DIR."/deletecity.rsd";
@@ -15,7 +15,7 @@ if(defined("WP_CONTENT_DIR"))
 else
 {
 	// The directory where the videos are stored
-	$cache_dir = dirname(__FILE__)."/../../dc_cache";
+	//$cache_dir = dirname(__FILE__)."/../../dc_cache";
 	
 	// Where the SQLite database will be stored
 	$dcdbfile = dirname(__FILE__)."/../../deletecity.rsd";
