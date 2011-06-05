@@ -1,11 +1,10 @@
 <?php
 require_once("common.php");
-require_once("Video.class.php");
 require_once("pid.class.php");
 libxml_use_internal_errors(true);
-date_default_timezone_set('UTC'); 
 $pid = new pid( dirname(__FILE__) );
 $start_time = time();
+
 
 print "--------------[runcache]--------------\n";
 print "Status: pid ". getmypid()." starting at " . date("F j, Y, g:i a") . "\n";
@@ -178,7 +177,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 		if(!$video->expired && !file_exists($video->vid_path))
 		{
 			print "\tStatus: [$cur_vid/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
-			
+
 			// http://rg3.github.com/youtube-dl/documentation.html#d6
 			`$youtube_dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
 		}
@@ -224,7 +223,7 @@ if ($dhandle)
 {
 	while (false !== ($fname = readdir($dhandle)))
 	{
-		if ($fname!='.' && $fname!='..' && !is_dir("./$fname") && !strpos($fname,".part") && $fname!="README")
+		if ($fname!='.' && $fname!='..' && !is_dir("./$fname") && !strpos($fname,".part"))
 		{
 			$path_parts = pathinfo($fname);
 			$youtube_id = $path_parts['filename'];

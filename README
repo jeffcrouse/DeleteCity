@@ -62,6 +62,12 @@ find out more about it here:  http://rg3.github.com/youtube-dl/
 TO DO
 =========================
 
+-- Redesign admin interface -- need some UX help!
+
+-- Add video enclosures on video page so you can click and watch immediately
+
+- Paginate videos!
+
 -- add proxy.conf -- a list of proxies to use randomly IF youtube-dl starts returning errors
 
 -- Testing if video had been removed: testing for presence of <?xml in response probably isn't good enough.  Here are some removed videos to test with.

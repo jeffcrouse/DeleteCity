@@ -18,8 +18,8 @@ class Video {
 	// other
 	var $age=0;
 	var $vid_path;
+	var $thumb_path;
 	var $in_db=false;
-
 
 	// ----------------------------------------------
 	function Video( $youtube_id )
@@ -28,6 +28,14 @@ class Video {
 	
 		$this->youtube_id = $youtube_id;
 		$this->vid_path = "{$cache_dir}/{$youtube_id}.mp4";
+		$this->thumb_path = "{$cache_dir}/{$youtube_id}.jpg";
+		
+		if(function_exists('content_url'))
+		{
+			$wp_content_dir = ABSPATH . 'wp-content';
+			$this->thumb_url = content_url() . str_replace($wp_content_dir, "", $this->thumb_path);
+			$this->vid_url = content_url() . str_replace($wp_content_dir, "", $this->vid_path);
+		}
 		
 		$sql="SELECT id, title, content, author, date_added, seen_in_feed, removed, expired, date_posted,
 			round(strftime('%J', datetime('now'))-strftime('%J', seen_in_feed), 2) as age
@@ -36,8 +44,8 @@ class Video {
 		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
 		if ($query_error) {
 			throw new Exception($query_error);
-		}
-			
+		}		
+		
 		if (!$result) {
 			throw new Exception("Impossible to execute query.");
 		}
@@ -57,8 +65,36 @@ class Video {
 			$this->date_posted = 	$row['date_posted'];
 			$this->in_db =			true;
 		}
+		
+		if(!file_exists($this->thumb_path))
+		{
+			$this->download_thumbnail();
+		}
 	}
 	
+	
+	// ----------------------------------------------
+	function download_thumbnail()
+	{
+		$url = "http://img.youtube.com/vi/{$this->youtube_id}/0.jpg";	
+	
+		if(ini_get('allow_url_fopen')=="1")
+		{
+			file_put_contents($this->thumb_path, file_get_contents($url));
+		}
+		
+		if(function_exists("curl_init"))
+		{
+			$ch = curl_init($url);
+			$fp = fopen($this->thumb_path, 'wb');
+			curl_setopt($ch, CURLOPT_FILE, $fp);
+			curl_setopt($ch, CURLOPT_HEADER, 0);
+			curl_exec($ch);
+			curl_close($ch);
+			fclose($fp);
+		}
+	}
+
 	
 	// ----------------------------------------------
 	function check_remote()

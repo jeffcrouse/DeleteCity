@@ -1,4 +1,5 @@
 <?php
+require_once("Video.class.php");
 date_default_timezone_set('UTC'); 
 
 // This file is included by both the plugin file and runcache.php, which doesn't have all of the 
@@ -60,6 +61,8 @@ if (!$q)
 	if ($query_error)
 		die("Error: $query_error");
 }
+
+
 
 
 // FUNCTIONS
@@ -222,7 +225,8 @@ function display_xml_error($error, $xml)
     $return  = $xml[$error->line - 1] . "\n";
     $return .= str_repeat('-', $error->column) . "^\n";
 
-    switch ($error->level) {
+    switch ($error->level)
+    {
         case LIBXML_ERR_WARNING:
             $return .= "Warning $error->code: ";
             break;
@@ -238,7 +242,8 @@ function display_xml_error($error, $xml)
                "\n  Line: $error->line" .
                "\n  Column: $error->column";
 
-    if ($error->file) {
+    if ($error->file)
+    {
         $return .= "\n  File: $error->file";
     }
 
@@ -248,37 +253,37 @@ function display_xml_error($error, $xml)
 
 function getDirectorySize($path) 
 { 
-  $totalsize = 0; 
-  $totalcount = 0; 
-  $dircount = 0; 
-  if ($handle = opendir ($path)) 
-  { 
-    while (false !== ($file = readdir($handle))) 
-    { 
-      $nextpath = $path . '/' . $file; 
-      if ($file != '.' && $file != '..' && !is_link ($nextpath)) 
-      { 
-        if (is_dir ($nextpath)) 
-        { 
-          $dircount++; 
-          $result = getDirectorySize($nextpath); 
-          $totalsize += $result['size']; 
-          $totalcount += $result['count']; 
-          $dircount += $result['dircount']; 
-        } 
-        elseif (is_file ($nextpath)) 
-        { 
-          $totalsize += filesize ($nextpath); 
-          $totalcount++; 
-        } 
-      } 
-    } 
-  } 
-  closedir ($handle); 
-  $total['size'] = $totalsize; 
-  $total['count'] = $totalcount; 
-  $total['dircount'] = $dircount; 
-  return $total; 
+	$totalsize = 0; 
+	$totalcount = 0; 
+	$dircount = 0; 
+	if ($handle = opendir ($path)) 
+	{ 
+		while (false !== ($file = readdir($handle))) 
+		{ 
+			$nextpath = $path . '/' . $file; 
+			if ($file != '.' && $file != '..' && !is_link ($nextpath)) 
+			{ 
+				if (is_dir ($nextpath)) 
+				{ 
+					$dircount++; 
+					$result = getDirectorySize($nextpath); 
+					$totalsize += $result['size']; 
+					$totalcount += $result['count']; 
+					$dircount += $result['dircount']; 
+				} 
+				elseif (is_file ($nextpath)) 
+				{ 
+					$totalsize += filesize ($nextpath); 
+					$totalcount++; 
+				} 
+			} 
+		} 
+	} 
+	closedir ($handle); 
+	$total['size'] = $totalsize; 
+	$total['count'] = $totalcount; 
+	$total['dircount'] = $dircount; 
+	return $total; 
 } 
 
 function sizeFormat($size) 
@@ -301,7 +306,6 @@ function sizeFormat($size)
     { 
         $size=round($size/(1024*1024*1024),1); 
         return $size." GB"; 
-    } 
-
+    }
 }  
 ?>

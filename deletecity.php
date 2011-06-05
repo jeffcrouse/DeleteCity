@@ -31,6 +31,10 @@ if ( !function_exists( 'add_action' ) ) {
 }
 
 require_once("common.php");
+ini_set('display_errors', 1); 
+error_reporting(E_ALL);
+
+
 global $cache_dir, $dcdb, $dclogfile, $runcache;
 $dclogfile = dirname(__FILE__)."/deletecity.log";
 $runcache = dirname(__FILE__)."/runcache.php";
@@ -107,27 +111,27 @@ function deletecity_cron_definer($schedules)
 register_activation_hook( __FILE__, 'deletecity_activate');
 function deletecity_activate()
 {	
-	if(!get_option('cache_schedule'))
+	if(!get_option('dc_cache_schedule'))
 	{
-		add_option('cache_schedule', 'twicedaily');
+		add_option('dc_cache_schedule', 'twicedaily');
 	}
 	
-	if(!get_option('post_schedule'))
+	if(!get_option('dc_post_schedule'))
 	{
-		add_option('post_schedule', 'weekly');
+		add_option('dc_post_schedule', 'weekly');
 	}
 	
 	// Add the two events to th eschedule
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
 		dc_log("Adding caching event to schedule");
-		wp_schedule_event(time(), get_option('cache_schedule'), 'runcache_function_hook' );
+		wp_schedule_event(time(), get_option('dc_cache_schedule'), 'runcache_function_hook' );
 	}	
 	
 	if (!wp_next_scheduled('post_videos_function_hook'))
 	{
 		dc_log("Adding posting event to schedule");
-		wp_schedule_event(time(), get_option('post_schedule'), 'post_videos_function_hook' );
+		wp_schedule_event(time(), get_option('dc_post_schedule'), 'post_videos_function_hook' );
 	}
 }
 
@@ -160,6 +164,12 @@ add_action( 'runcache_function_hook', 'runcache' );
 function runcache()
 {
 	global $dclogfile, $runcache, $rate_limit, $max_age;
+	
+	if(filesize($dclogfile) > 1024*1024*10)
+	{
+		$newname = "deletecity-".date('h-i-s-j-m-y').".log";
+		rename($dclogfile, $newname);
+	}
 
 	dc_log("Starting runcache");
 	
@@ -259,36 +269,33 @@ if ( is_admin() )
 			case 'post_videos':
 				post_removed_videos();
 				break;
+			case 'save_options':
+				$dcdb->queryExec("DELETE FROM sources;", $query_error);
+				if ($query_error)
+				{
+					die("Error: $query_error");
+				}
+				$sources = explode("\n", $_REQUEST['dc-sources']);
+				foreach($sources as $source)
+				{
+					$source=trim($source);
+					if(empty($source))
+					{
+						continue;
+					}
+					$source = sqlite_escape_string($source);
+					$dcdb->queryExec("INSERT INTO sources (feed_url) VALUES('$source');", $query_error);
+					if ($query_error)
+					{
+						die("Error: $query_error");
+					}
+				}
+				update_option('dc_cache_schedule', $_REQUEST['dc-cache-schedule']);
+				update_option('dc_post_schedule',  $_REQUEST['dc-post-schedule']);
+				deletecity_deactivate();
+				deletecity_activate();
+				break;
 		}
-	}
-
-	if(isset($_REQUEST['dc_submit_options']) && $_REQUEST['dc_submit_options']=='true')
-	{
-		$dcdb->queryExec("DELETE FROM sources;", $query_error);
-		if ($query_error)
-		{
-			die("Error: $query_error");
-		}
-		$sources = explode("\n", $_REQUEST['dc-sources']);
-		foreach($sources as $source)
-		{
-			$source=trim($source);
-			if(empty($source))
-			{
-				continue;
-			}
-			$source = sqlite_escape_string($source);
-			$dcdb->queryExec("INSERT INTO sources (feed_url) VALUES('$source');", $query_error);
-			if ($query_error)
-			{
-				die("Error: $query_error");
-			}
-		}
-	
-		update_option('cache_schedule', $_REQUEST['dc-cache-schedule']);
-		update_option('post_schedule',  $_REQUEST['dc-post-schedule']);
-		deletecity_deactivate();
-		deletecity_activate();	
 	}
 
 
@@ -297,8 +304,46 @@ if ( is_admin() )
 	{
 		add_options_page('Delete City Settings', 'Delete City Settings', 'administrator', 'deletecity', 'deletecity_settings_page');
 		add_plugins_page("Delete City Stats", "Delete City Stats", 'administrator', 'deletecity-stats', 'deletecity_stats_page' );
+		add_plugins_page("Delete City Videos", "Delete City Videos", 'administrator', 'deletecity-videos', 'deletecity_videos_page' );
 	}
 	
+	// --------------------------------------------
+	function deletecity_videos_page()
+	{
+		global $dcdb, $cache_dir, $dclogfile;
+		?>
+		<div style="padding-bottom: 40px;";>
+			<h2>Delete City Videos</h2>
+		<?php
+		$result = $dcdb->query("SELECT youtube_id FROM videos ORDER BY date_added DESC", SQLITE_ASSOC, $query_error); 
+		if ($query_error)
+			die("Error: $query_error"); 
+			
+		if (!$result)
+			die("Error: Impossible to execute query.");
+		
+		$total = $result->numRows();
+		$i=1;
+		
+		while($row = $result->fetch(SQLITE_ASSOC))
+		{ 
+			$video = new Video($row['youtube_id'] );
+			?>
+			<div style="width: 250px; float: left; padding-bottom: 20px;">
+				<div style="height: 20px; width: 220px; font-weight: bold;"><?php echo $video->title; ?></div>
+				<a href="<?php echo $video->vid_url; ?>" target="_blank"><img src="<?php echo $video->thumb_url; ?>" style="width: 240px; height: 180px;" /></a>
+				<b>age: </b> <?php echo $video->age; ?> days<br />
+				<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
+			</div>
+			<?php
+			$i++;
+		}
+		?>
+		</div>
+		<?php
+	}
+	
+	// --------------------------------------------
 	function deletecity_stats_page()
 	{
 		global $dcdb, $cache_dir, $dclogfile;
@@ -317,7 +362,7 @@ if ( is_admin() )
 				<?php echo  $process; ?>
 			<?php endif; ?>
 			<b>Cache Directory:</b> <?php echo $cache_dir; ?><br /> 
-			<b>Total Cache Size:</b> <?php echo $ar['count']; ?> videos, <?php echo sizeFormat($ar['size']); ?><br /> 
+			<b>Total Cache Size:</b> <?php echo floor($ar['count']/2); ?> videos, <?php echo sizeFormat($ar['size']); ?><br /> 
 			<?php
 			$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed>0", SQLITE_ASSOC, $query_error); 
 			if ($query_error)
@@ -328,11 +373,10 @@ if ( is_admin() )
 			<b>Removed Videos Found:</b> <?=$result->numRows()?><br />
 
 			<br />
-			<textarea readonly name="log" id="log" style="width: 98%; height: 300px;"><?php //readfile($dclogfile); ?></textarea>
+			<textarea readonly name="log" id="log" style="width: 98%; height: 300px;"></textarea>
 			
 			<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js"></script>
 			<script type="text/javascript">
-			//setInterval("log.scrollTop = log.scrollHeight", 1000);
 			$.ajaxSetup({cache:false});
 			function refresh_log()
 			{
@@ -343,23 +387,21 @@ if ( is_admin() )
 			refresh_log();
 			setInterval(refresh_log, 5000);
 			</script>
-			
 			<p>
 				<form method="post" action="">
-				<?php if(file_exists(dirname(__FILE__)."/runcache.php.pid")): ?>
-				<button name="action" value="stopcache" type="submit">Stop Cache Now</button>
-				<?php else: ?>
-				<button name="action" value="runcache" type="submit">Run Cache Now</button>
-				<?php endif; ?>
-				<button name="action" value="post_videos" type="submit">Post Videos Now</button>
-				<input type="hidden" name="dc_do_action" value="true" />
+					<?php if(empty($process)): ?>
+					<button name="action" value="runcache" type="submit">Run Cache Now</button>
+					<?php else: ?>
+					<button name="action" value="stopcache" type="submit">Stop Cache Now</button>
+					<?php endif; ?>
+					<button name="action" value="post_videos" type="submit">Post Videos Now</button>
+					<input type="hidden" name="dc_do_action" value="true" />
 				</form>
 			</p>
 
 		</div>
 		<?php
 	}
-	
 
 	
 	//--------------------------------------
@@ -401,7 +443,7 @@ if ( is_admin() )
 			<ul>
 			<?php foreach($schedules as $slug => $schedule): ?>
 			<li>
-				<?php $checked = (get_option('cache_schedule')==$slug) ? 'checked' : ''; ?>
+				<?php $checked = (get_option('dc_cache_schedule')==$slug) ? 'checked' : ''; ?>
 				<input type="radio" name="dc-cache-schedule" value="<?php echo $slug; ?>" <?php echo $checked; ?> /> 
 				<?php echo $schedule['display']; ?>
 			</li>
@@ -413,7 +455,7 @@ if ( is_admin() )
 			<ul>
 			<?php foreach($schedules as $slug => $schedule): ?>
 			<li>
-				<?php $checked = (get_option('post_schedule')==$slug) ? 'checked' : ''; ?>
+				<?php $checked = (get_option('dc_post_schedule')==$slug) ? 'checked' : ''; ?>
 				<input type="radio" name="dc-post-schedule" value="<?php echo $slug; ?>" <?php echo $checked; ?> /> 
 				<?php echo $schedule['display']; ?>
 			</li>
@@ -426,7 +468,8 @@ if ( is_admin() )
 			<textarea name="dc-sources" style="width: 90%; height: 200px;"><?php echo $urls?></textarea>
 
 			<p>
-				<input type="hidden" name="dc_submit_options" value="true" />
+				<input type="hidden" name="action" value="save_options" />
+				<input type="hidden" name="dc_do_action" value="true" />
 				<input type="submit" value="<?php _e('Save Changes') ?>" />
 			</p>
 			
