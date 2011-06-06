@@ -33,10 +33,11 @@ if ( !function_exists( 'add_action' ) ) {
 require_once("common.php");
 require_once("Video.class.php");
 require_once("dcdb.php");
-
-ini_set('display_errors', 1); 
-error_reporting(E_ALL);
 date_default_timezone_set('UTC'); 
+
+//ini_set('display_errors', 1); 
+//error_reporting(E_ALL);
+
 
 global $dcdb, $dclogfile, $runcache;
 
@@ -348,10 +349,19 @@ if ( is_admin() )
 
 
 	// --------------------------------------------
+	add_action('init', 'dc_load');
+	function dc_load(){
+		wp_enqueue_style('jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/smoothness/jquery-ui.css'); 
+		wp_enqueue_script( 'jquery' );
+		wp_enqueue_script( 'jquery-ui-core' );
+		wp_enqueue_script( 'jquery-ui-dialog' );
+	}
+
+
+	// --------------------------------------------
 	function deletecity_status_page()
 	{
 		global $dclogfile, $dcdb, $dc_plugin_dir;
-		
 		$pid = get_runcache_pid();
 		?>
 		
@@ -361,7 +371,7 @@ if ( is_admin() )
 			<?php if(!$pid): ?>
 				The caching process is not running.
 			<?php else: ?>
-				<img src="<?php echo $dc_plugin_dir; ?>/ajax-loader.gif" /> <a title="<?php echo  `ps aux | grep runcache | grep -v grep`; ?>">The cache process is running.</a>
+				<img src="<?php echo $dc_plugin_dir; ?>ajax-loader.gif" /> <a title="<?php echo  `ps aux | grep runcache | grep -v grep`; ?>">The cache process is running.</a>
 			<?php endif; ?>
 			<br />
 
@@ -380,24 +390,42 @@ if ( is_admin() )
 			</p>
 			
 			<h2>Videos</h2>
-			<p>all <input type="radio" name="filter" value="all" checked /> removed <input type="radio" name="filter" value="removed" /></p>
+			<p>all <input type="radio" name="filter" value="all" /> saved by Delete City <input type="radio" name="filter" value="removed"  checked/></p>
 			
 			<div id="videos" style="width: 95%;"></div>				
+			<div id="video-player"></div>
 			
+			<script type="text/javascript" src="<?php echo $dc_plugin_dir; ?>mediaplayer-5.6/jwplayer.js"></script>
 			<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js"></script>
 			<script type="text/javascript">
 			$.ajaxSetup({cache:false});
-			function refresh_dc()
+			$('input[name=filter]').click(function(){
+				dc_refresh();
+			});
+			function dc_show_video(id)
+			{
+				var data = {action: 'dc_watch_vid', youtube_id: id};
+				$("#video-player").load(ajaxurl, data, function(){
+					$(this).dialog({
+						width: 680,
+						height:510,
+						modal: true
+					});
+				});
+			}
+			function dc_refresh()
 			{
 				var filter = $('input[name=filter]:checked').val();
 				var data = {action: 'dc_get_vids', page: '1', 'filter': filter};
 				$("#videos").load(ajaxurl, data);
-				$("#log").load("<?php echo $dc_plugin_dir; ?>/deletecity.log", function() {
+				$("#log").load("<?php echo $dc_plugin_dir; ?>deletecity.log", function() {
 					$("#log").scrollTop($("#log")[0].scrollHeight);
 				});
 			}
-			refresh_dc();
-			setInterval(refresh_dc, 5000);
+			dc_refresh();
+			<?php if($pid): ?>
+			setInterval(dc_refresh, 10000);
+			<?php endif; ?>
 			</script>
 
 		</div>
@@ -411,6 +439,7 @@ if ( is_admin() )
 	{
 		global $dcdb, $dclogfile;
 	
+		$dc_plugin_dir = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
 		$page = $_POST['page'];
 		$filter = $_POST['filter'];
 	
@@ -419,7 +448,7 @@ if ( is_admin() )
 		{
 			$sql .= " WHERE removed>0 ";
 		}
-		$sql .= " ORDER BY date_added DESC";
+		$sql .= " ORDER BY date_added DESC LIMIT 12";
 		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
 		if ($query_error)
 			die("Error: $query_error"); 
@@ -448,11 +477,11 @@ if ( is_admin() )
 			?>
 			<div style="width: 250px; float: left; padding-bottom: 20px;">
 				<div style="height: 20px; width: 220px; font-weight: bold;">
-					[<?php echo $i; ?>/<?php echo $total; ?>] <?php echo $video->title; ?>
+					<!--[<?php echo $i; ?>/<?php echo $total; ?>]--> <?php echo $video->title; ?>
 				</div>
-				<a href="<?php echo $video->vid_url; ?>" target="_blank">
+				<a href="javascript:dc_show_video('<?php echo $video->youtube_id; ?>');">
 					<img src="<?php echo $video->thumb_url; ?>" style="width: 240px; height: 180px;" />
-				</a>
+				<a>
 				<b>age: </b> <?php echo ($video->age > 1) ? "{$video->age} days" : ($video->age*24)." hours"; ?><br />
 				<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
 			</div>
@@ -462,6 +491,31 @@ if ( is_admin() )
 		die(); // this is required to return a proper result
 	}
 
+	//-------------------------------------
+	// AJAX action for loading video player
+	add_action('wp_ajax_dc_watch_vid', 'dc_watch_vid');
+	function dc_watch_vid()
+	{
+		$dc_plugin_dir = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
+		$youtube_id = $_POST['youtube_id'];
+		$video = new Video($youtube_id);
+		?>
+			<div class="video-title" style="font-size: 18px; font-weight: bold;"><?php echo $video->title; ?></div>
+			<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
+			<div id="video-<?php echo $youtube_id; ?>">Loading the player ...</div>
+			<p style="height: 30px;"><?php echo $video->content; ?></p>
+			<script type="text/javascript"> 
+			jwplayer("video-<?php echo $youtube_id; ?>").setup({
+				image: "<?php echo $video->thumb_url; ?>",
+				flashplayer: "<?php echo $dc_plugin_dir; ?>mediaplayer-5.6/player.swf", 
+				file: "<?php echo $video->vid_url; ?>", 
+				width: 640,
+				height: 360 
+			});
+			</script>
+		<?php
+		die();
+	}
 	
 	//--------------------------------------
 	// Render the settings page
