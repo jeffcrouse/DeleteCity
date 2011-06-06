@@ -3,7 +3,7 @@ require_once("Video.class.php");
 require_once("common.php");
 require_once("pid.class.php");
 require_once("dcdb.php");
-date_default_timezone_set('UTC'); 
+date_default_timezone_set(getLocalTimezone());
 libxml_use_internal_errors(true);
 $pid = new pid( dirname(__FILE__) );
 $start_time = time();
@@ -304,4 +304,5 @@ while($row = $result->fetch(SQLITE_ASSOC))
 $elapsed_time = time() - $start_time;
 $minutes = $elapsed_time / 60.0;
 print "Status: elapsed time: {$minutes} minutes\n\n";
+print "--------------[/runcache]--------------\n";
 ?>

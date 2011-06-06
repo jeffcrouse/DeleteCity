@@ -33,7 +33,7 @@ if ( !function_exists( 'add_action' ) ) {
 require_once("common.php");
 require_once("Video.class.php");
 require_once("dcdb.php");
-date_default_timezone_set('UTC'); 
+date_default_timezone_set(getLocalTimezone());
 
 //ini_set('display_errors', 1); 
 //error_reporting(E_ALL);
@@ -368,12 +368,19 @@ if ( is_admin() )
 		<div style="padding-bottom: 40px;";>
 			<h2>Delete City Status</h2>
  
-			<?php if(!$pid): ?>
-				The caching process is not running.
-			<?php else: ?>
-				<img src="<?php echo $dc_plugin_dir; ?>ajax-loader.gif" /> <a title="<?php echo  `ps aux | grep runcache | grep -v grep`; ?>">The cache process is running.</a>
-			<?php endif; ?>
-			<br />
+ 			<div style="width: 95%; height: 20px;">
+ 				<div style="float: left;">
+					<?php if(!$pid): ?>
+						The caching process is not running.
+					<?php else: ?>
+						<img src="<?php echo $dc_plugin_dir; ?>ajax-loader.gif" /> <a title="<?php echo  `ps aux | grep runcache | grep -v grep`; ?>">The cache process is running.</a>
+					<?php endif; ?>
+				</div>
+				<div style="float: right; padding-right: 6px; padding-top: 10px;">
+					<a href="<?php echo $dc_plugin_dir.basename($dclogfile); ?>" target="_blank"><img src="<?php echo $dc_plugin_dir; ?>pop-out-arrow.gif" /></a>
+				</div>
+			</div>
+
 
 			<textarea readonly name="log" id="log" style="width: 95%; height: 100px;"></textarea>
 
@@ -390,7 +397,10 @@ if ( is_admin() )
 			</p>
 			
 			<h2>Videos</h2>
-			<p>All Videos<input type="radio" name="filter" value="all" /> Videos Saved by Delete City <input type="radio" name="filter" value="removed"  checked/></p>
+			<p>
+				<input type="radio" name="filter" value="all" /> All Videos &nbsp;&nbsp;&nbsp;
+				<input type="radio" name="filter" value="removed" checked/> Videos Saved by Delete City
+			</p>
 			
 			<div id="videos" style="width: 95%;"></div>				
 			<div id="video-player"></div>
