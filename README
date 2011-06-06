@@ -62,19 +62,17 @@ find out more about it here:  http://rg3.github.com/youtube-dl/
 TO DO
 =========================
 
+-- Maximum cache size option
+
 -- "RUN CACHE NOW" button doesn't reflect change on press
 
 -- in deletecity.php, turn max_age and ratelimit into WP options
 
 -- Can I include some file in runcache that will allow me to get Wordpress options? That would allow me to avoid all of this parameter passing...
 
--- Get rid of pid.class.php -- not really using it properly anyway. Just use trim(`ps aux | grep runcache | grep -v grep`);
-
 -- What should happen if someone changes their cache directory?
 
 -- Redesign admin interface -- need some UX help
-
--- Add video enclosures on video page so you can click and watch immediately
 
 - Paginate videos!
 
@@ -86,9 +84,7 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 -- Option to automatically email the video author to ask why the video was taken down :)
 
--- Batch query in check.php?
-
--- low priority: If an orphan file is encountered that has been removed from YouTube, it will never get inserted into the database because we can't fetch info for it.  Need a better solution for this, or maybe it is just unavoidable.  Maybe the solution is to just save http://gdata.youtube.com/feeds/api/videos/{$this->youtube_id} as an XML file in the cache directory?  That is a lot of redundant information: you have stuff in the database and in the XML files.  
+-- Batch query in runcache.php?
 
 -- Catch exceptions from Video class
 

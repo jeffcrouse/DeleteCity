@@ -45,7 +45,7 @@ class Video {
 		}
 		
 		$sql="SELECT id, title, content, author, date_added, seen_in_feed, removed, expired, date_posted,
-			round(strftime('%J', datetime('now'))-strftime('%J', seen_in_feed), 4) as age
+			round(strftime('%J', datetime('now'))-strftime('%J', seen_in_feed), 2) as age
 			FROM videos WHERE youtube_id='{$youtube_id}'";
 			
 		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
