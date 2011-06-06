@@ -390,7 +390,7 @@ if ( is_admin() )
 			</p>
 			
 			<h2>Videos</h2>
-			<p>all <input type="radio" name="filter" value="all" /> saved by Delete City <input type="radio" name="filter" value="removed"  checked/></p>
+			<p>All Videos<input type="radio" name="filter" value="all" /> Videos Saved by Delete City <input type="radio" name="filter" value="removed"  checked/></p>
 			
 			<div id="videos" style="width: 95%;"></div>				
 			<div id="video-player"></div>
@@ -408,7 +408,7 @@ if ( is_admin() )
 				$("#video-player").load(ajaxurl, data, function(){
 					$(this).dialog({
 						width: 680,
-						height:510,
+						height:530,
 						modal: true
 					});
 				});
@@ -501,9 +501,9 @@ if ( is_admin() )
 		$video = new Video($youtube_id);
 		?>
 			<div class="video-title" style="font-size: 18px; font-weight: bold;"><?php echo $video->title; ?></div>
-			<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
+			<p>by <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a></p>
 			<div id="video-<?php echo $youtube_id; ?>">Loading the player ...</div>
-			<p style="height: 30px;"><?php echo $video->content; ?></p>
+			<p><?php echo $video->content; ?></p>
 			<script type="text/javascript"> 
 			jwplayer("video-<?php echo $youtube_id; ?>").setup({
 				image: "<?php echo $video->thumb_url; ?>",
