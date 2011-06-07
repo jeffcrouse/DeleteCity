@@ -62,6 +62,10 @@ find out more about it here:  http://rg3.github.com/youtube-dl/
 TO DO
 =========================
 
+-- Allow usernames in blacklist
+
+-- regex validation for rate limit 
+
 -- Imlement dc_max_cache_size options (they currently do nothing)
 
 -- Add "Check for deleted videos" button to admin.  Add a command line option to runcache for "check only - don't download"

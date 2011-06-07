@@ -138,7 +138,7 @@ function deletecity_activate()
 	
 	if(!get_option('dc_blacklist'))
 	{
-		add_option('dc_blacklist',  "sexy, milf, whores");
+		add_option('dc_blacklist',  "sexy, milf, whores, porn, xxx");
 	}
 	
 	if(!get_option('dc_max_cache_size'))
@@ -592,7 +592,7 @@ if ( is_admin() )
 			<h3>Cache</h3>
 			Directory: <input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 500px;" disabled /><br />
 			Max Size: <input name="dc-max-cache-size" type="text" value="<?php echo get_option('dc_max_cache_size'); ?>"  style="width: 80px;" /> MB<br />
-			Rate Limit: <input name="dc-rate-limit" type="text" value="<?php echo get_option('dc_rate_limit'); ?>"  style="width: 80px;" />
+			Rate Limit: <input name="dc-rate-limit" type="text" value="<?php echo get_option('dc_rate_limit'); ?>"  style="width: 80px;" /> (e.g. 50k or 44.6m)
 
 			<h3>Database File</h3>
 			<input name="dc-db-file" type="text" value="<?php echo get_option('dc_db_file'); ?>"  style="width: 90%;" disabled />
