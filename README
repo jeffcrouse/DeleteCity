@@ -62,11 +62,9 @@ find out more about it here:  http://rg3.github.com/youtube-dl/
 TO DO
 =========================
 
--- Maximum cache size option
+-- Imlement dc_max_cache_size options (they currently do nothing)
 
--- "RUN CACHE NOW" button doesn't reflect change on press
-
--- in deletecity.php, turn max_age and ratelimit into WP options
+-- Add "Check for deleted videos" button to admin.  Add a command line option to runcache for "check only - don't download"
 
 -- Can I include some file in runcache that will allow me to get Wordpress options? That would allow me to avoid all of this parameter passing...
 

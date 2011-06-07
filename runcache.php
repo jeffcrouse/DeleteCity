@@ -1,9 +1,8 @@
 <?php
-require_once("Video.class.php");
 require_once("common.php");
+require_once("Video.class.php");
 require_once("pid.class.php");
 require_once("dcdb.php");
-date_default_timezone_set(getLocalTimezone());
 libxml_use_internal_errors(true);
 $pid = new pid( dirname(__FILE__) );
 $start_time = time();
@@ -25,9 +24,13 @@ $max_age = $args['maxage'];
 $rate_limit = isset($args['ratelimit']) ? $args['ratelimit'] : '500k';
 Video::$cache_dir = $args['cachedir'];
 $dcdbfile = $args['db'];
+$blacklist = preg_split("/[\s]*[,][\s]*/", $args['blacklist']);
 
-
-print "\tMax Age: $max_age \n\tRate Limit: $rate_limit \n\tCache Dir: {$args['cachedir']}\n\tDatabase: $dcdbfile\n\n";
+print "\tMax Age: $max_age\n";
+print "\tRate Limit: $rate_limit\n";
+print "\tCache Dir: {$args['cachedir']}\n";
+print "\tDatabase: $dcdbfile\n";
+print "\tBlacklist: ".implode(", ", $blacklist)."\n";
 
 
 /*******************************
@@ -176,6 +179,22 @@ while($row = $result->fetch(SQLITE_ASSOC))
 		preg_match("/v=([^&]+)/", $vid_url, $matches);
 
 		$video = new Video( $matches[1] );
+		$video->title = $entry->title;
+		$video->content = $entry->content;
+		$video->author = $entry->author->name;
+		
+		$blacklisted = false;
+		foreach($blacklist as $word)
+		{
+			if(stristr($video->title, $word) || stristr($video->content, $word))
+			{
+				print "\tStatus: [$cur_vid/$num_vids] \"$word\" found. Skipping\n";
+				$blacklisted = true;
+			}
+		}
+		
+		// Skip any videos that contain a blacklisted word.
+		if($blacklisted) continue;
 		
 		// If we need to download the video, do it!
 		if(!$video->expired && !file_exists($video->vid_path))
@@ -197,9 +216,7 @@ while($row = $result->fetch(SQLITE_ASSOC))
 			if(file_exists($video->vid_path))
 			{
 				print "\tStatus: [$cur_vid/$num_vids] Adding \"{$entry->title}\" ({$video->youtube_id}) to database\n";
-				$video->title = $entry->title;
-				$video->content = $entry->content;
-				$video->author = $entry->author->name;
+	
 				$video->save();
 			}
 			else

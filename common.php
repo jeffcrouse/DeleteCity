@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set(getLocalTimezone());
 
 // ------------------------------------
 function get_web_page( $url )

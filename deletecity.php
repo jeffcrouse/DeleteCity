@@ -33,7 +33,7 @@ if ( !function_exists( 'add_action' ) ) {
 require_once("common.php");
 require_once("Video.class.php");
 require_once("dcdb.php");
-date_default_timezone_set(getLocalTimezone());
+
 
 //ini_set('display_errors', 1); 
 //error_reporting(E_ALL);
@@ -48,7 +48,6 @@ $runcache = dirname(__FILE__)."/runcache.php";
 $dc_plugin_dir = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
 Video::$cache_dir = get_option('dc_cache_dir', WP_CONTENT_DIR."/dc_cache");
 $max_age = 3;		// Videos will be deleted after 'max_age' days
-$rate_limit="300k";	// Max speed that the videos will be downloaded
 
 
 // --------------------------------------------------------------------------
@@ -137,6 +136,21 @@ function deletecity_activate()
 		add_option('dc_db_file',  WP_CONTENT_DIR."/deletecity.rsd");
 	}
 	
+	if(!get_option('dc_blacklist'))
+	{
+		add_option('dc_blacklist',  "sexy, milf, whores");
+	}
+	
+	if(!get_option('dc_max_cache_size'))
+	{
+		add_option('dc_max_cache_size', "8000");
+	}
+	
+	if(!get_option('dc_rate_limit'))
+	{
+		add_option('dc_rate_limit', "300k");
+	}
+	
 	// Add the two events to th eschedule
 	if (!wp_next_scheduled('runcache_function_hook'))
 	{
@@ -178,7 +192,7 @@ function deletecity_deactivate()
 add_action( 'runcache_function_hook', 'runcache' );
 function runcache()
 {
-	global $dclogfile, $runcache, $rate_limit, $max_age;
+	global $dclogfile, $runcache, $max_age;
 	
 	if(filesize($dclogfile) > 1024*1024*10)
 	{
@@ -188,10 +202,13 @@ function runcache()
 
 	dc_log("Starting runcache");
 	
-	$dir = get_option('dc_cache_dir');
-	$db = get_option('dc_db_file');
+	$dir = escapeshellarg(get_option('dc_cache_dir'));
+	$db = escapeshellarg(get_option('dc_db_file'));
+	$rate_limit = escapeshellarg(get_option('dc_rate_limit'));
+	$blacklist = escapeshellarg(get_option('dc_blacklist'));
+	
 	// run the cachiing process in the background.
-	`php $runcache --ratelimit=$rate_limit --maxage=$max_age --cachedir=$dir --db=$db >> $dclogfile 2>&1 &`;
+	`php $runcache --ratelimit=$rate_limit --maxage=$max_age --cachedir=$dir --db=$db --blacklist=$blacklist >> $dclogfile 2>&1 &`;
 }
 
 
@@ -305,6 +322,12 @@ if ( is_admin() )
 				break;
 			case 'runcache':
 				runcache();
+				// The script needs a minute to start
+				// delay so that the GUI reflects that it is running
+				while(!get_runcache_pid())
+				{
+					sleep(1);
+				}
 				break;
 			case 'post_videos':
 				post_removed_videos();
@@ -332,6 +355,9 @@ if ( is_admin() )
 				}
 				update_option('dc_cache_schedule', $_REQUEST['dc-cache-schedule']);
 				update_option('dc_post_schedule',  $_REQUEST['dc-post-schedule']);
+				update_option('dc_blacklist',  $_REQUEST['dc-blacklist']);
+				update_option('dc_max_cache_size',  $_REQUEST['dc-max-cache-size']);
+				update_option('dc_rate_limit',  $_REQUEST['dc-rate-limit']);
 				deletecity_deactivate();
 				deletecity_activate();
 				break;
@@ -398,7 +424,7 @@ if ( is_admin() )
 			
 			<h2>Videos</h2>
 			<p>
-				<input type="radio" name="filter" value="all" /> All Videos &nbsp;&nbsp;&nbsp;
+				<input type="radio" name="filter" value="all" /> All Cached Videos &nbsp;&nbsp;&nbsp;
 				<input type="radio" name="filter" value="removed" checked/> Videos Saved by Delete City
 			</p>
 			
@@ -562,8 +588,11 @@ if ( is_admin() )
 		<?php endif; ?>
 		<form method="post" action="">
 
-			<h3>Cache Directory</h3>
-			<input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 90%;" disabled />
+
+			<h3>Cache</h3>
+			Directory: <input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 500px;" disabled /><br />
+			Max Size: <input name="dc-max-cache-size" type="text" value="<?php echo get_option('dc_max_cache_size'); ?>"  style="width: 80px;" /> MB<br />
+			Rate Limit: <input name="dc-rate-limit" type="text" value="<?php echo get_option('dc_rate_limit'); ?>"  style="width: 80px;" />
 
 			<h3>Database File</h3>
 			<input name="dc-db-file" type="text" value="<?php echo get_option('dc_db_file'); ?>"  style="width: 90%;" disabled />
@@ -595,14 +624,16 @@ if ( is_admin() )
 			<h3>Sources</h3>
 			<p>Check out <a href="http://code.google.com/apis/youtube/2.0/reference.html#Searching_for_videos">
 			this page for more information about source URLS</a>.</p>
-			<textarea name="dc-sources" style="width: 90%; height: 200px;"><?php echo $urls?></textarea>
+			<textarea name="dc-sources" style="width: 90%; height: 150px;"><?php echo $urls?></textarea>
 
+			<h3>Blacklist</h3>
+			<p>Videos containing these words in title or description will be skipped.</p>
+			<textarea name="dc-blacklist" style="width: 90%; height: 100px;"><?php echo get_option('dc_blacklist'); ?></textarea>
 			<p>
 				<input type="hidden" name="action" value="save_options" />
 				<input type="hidden" name="dc_do_action" value="true" />
 				<input type="submit" value="<?php _e('Save Changes') ?>" />
 			</p>
-			
 		</form>
 		</div>
 	<?php
