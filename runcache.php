@@ -32,7 +32,7 @@ $do_cache = true;
 $do_orphan_check=true;
 $do_check_for_deletions=true;
 
-if($args['find_deleted_only'])
+if(isset($args['find_deleted_only']))
 {
 	$do_cache = false;
 	$do_orphan_check=false;
