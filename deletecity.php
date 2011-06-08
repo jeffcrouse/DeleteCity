@@ -52,8 +52,8 @@ require_once("common.php");
 require_once("Video.class.php");
 require_once("dcdb.php");
 
-ini_set('display_errors', 1); 
-error_reporting(E_ALL);
+//ini_set('display_errors', 1); 
+//error_reporting(E_ALL);
 
 // Set some vaaaaaarrrrs
 global $dcdb; //, $dclogfile, $runcache;
@@ -306,7 +306,7 @@ function post_removed_videos()
 				print "<!--more {$more} more videos after the break. -->";
 			}
 			?>
-		<?php $i++; endforeach; ?>
+		<?php $video->mark_as_posted(); $i++; endforeach; ?>
 	</div>
 	
 	<?php
@@ -422,11 +422,11 @@ if ( is_admin() )
 					<?php if(!$pid): ?>
 						The caching process is not running.
 					<?php else: ?>
-						<img src="<?php echo $dc_plugin_dir; ?>ajax-loader.gif" /> <a title="<?php echo  `ps aux | grep runcache | grep -v grep`; ?>">The cache process is running.</a>
+						<img src="<?php echo $dc_plugin_dir; ?>gs/ajax-loader.gif" /> <a title="<?php echo  `ps aux | grep runcache | grep -v grep`; ?>">The cache process is running.</a>
 					<?php endif; ?>
 				</div>
 				<div style="float: right; padding-right: 6px; padding-top: 10px;">
-					<a href="<?php echo $dc_plugin_dir.basename($dclogfile); ?>" target="_blank"><img src="<?php echo $dc_plugin_dir; ?>pop-out-arrow.gif" /></a>
+					<a href="<?php echo $dc_plugin_dir.basename($dclogfile); ?>" target="_blank"><img src="<?php echo $dc_plugin_dir; ?>gs/pop-out-arrow.gif" /></a>
 				</div>
 			</div>
 
@@ -664,7 +664,7 @@ if ( is_admin() )
 		<?php
 		if($total==0)
 		{
-			print "There are no videos that match that request.";
+			print "There are no videos that match that request. If you have just activated the plugin, it could take up to a few days to save a video.  Please be patient.";
 			die();
 		}
 		
@@ -675,7 +675,7 @@ if ( is_admin() )
 			<div style="width: 250px; float: left; padding-bottom: 20px;">
 				<div style="height: 20px; width: 220px; font-weight: bold;">
 					<a href="javascript:dc_delete_video('<?php echo $video->youtube_id; ?>')">
-						<img src="<?php echo $dc_plugin_dir; ?>delete_icon.gif" />
+						<img src="<?php echo $dc_plugin_dir; ?>gs/delete_icon.gif" />
 					</a>
 					<?php echo $video->title; ?>
 				</div>
@@ -689,6 +689,7 @@ if ( is_admin() )
 		}
 		
 		$pages = ceil($total / $results_per_page);
+		if($pages > 1):
 		?>
 		
 		<br style="clear: both;" />
@@ -718,6 +719,7 @@ if ( is_admin() )
 		</div>
 		
 		<?php
+		endif;
 		die(); // this is required to return a proper result
 	}
 }
