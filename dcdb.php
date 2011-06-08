@@ -1,8 +1,10 @@
 <?php
+require_once("schema.php");	// this is where all of the schema info is.
 
 // This file will be included either from a Wordpress page or from a command line script.  
 // If it is from Wordpress, the SQLite file is stored in a Wordpress option.
 // If it is the command line script, the file is passed in as a '--db' command line argument.
+$dcdbfile = NULL; // FIND A VALUE FOR THIS!
 
 if(function_exists('get_option'))
 {
@@ -19,6 +21,9 @@ if(!isset($dcdbfile))
 	die("You must specify a database file.");
 }
 
+
+
+// Now try to construct the database reference that will be used throughout the plugin
 $dcdb = new SQLiteDatabase($dcdbfile);
 if (!$dcdb)
 {
@@ -28,34 +33,28 @@ if (!$dcdb)
 	die($error);
 }
 
-$q = @$dcdb->query("SELECT id FROM videos WHERE id=1");
-if (!$q)
+
+
+// Determine which schema update to start with.
+$sql="SELECT version FROM schema_version ORDER BY date_installed DESC LIMIT 1";
+$q = @$dcdb->query($sql, SQLITE_ASSOC, $query_error); 
+if (!$q) $current_version = -1;
+else
 {
-	$dcdb->queryExec("
-	CREATE TABLE videos (
-		id 				INTEGER PRIMARY KEY NULL, 
-		youtube_id		VarChar NULL UNIQUE,
-		title 			CHAR(255) NULL,
-		content			Text NULL,
-		author			CHAR(255) NULL,
-		date_added 		DATETIME NOT NULL,
-		seen_in_feed 	DATETIME NOT NULL,
-		removed			Boolean NULL DEFAULT 0,
-		expired			Boolean NULL DEFAULT 0,
-		date_posted 	DATETIME NULL
-	);
-	CREATE TABLE sources (
-		id 				INTEGER PRIMARY KEY NULL, 
-		feed_url		VarChar NOT NULL
-	);
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_recent?&orderby=published&max-results=50'); 
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_recent?&orderby=published&max-results=50&start-index=51'); 
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_discussed'); 
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/top_rated'); 
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/standardfeeds/most_viewed');
-	INSERT INTO sources (feed_url) VALUES('http://gdata.youtube.com/feeds/api/videos?q=slow+loris&orderby=published&max-results=25');", 
-	$query_error);
-	if ($query_error)
-		die("Error: $query_error");
+	$row = $q->fetch(SQLITE_ASSOC);
+	$current_version = $row['version'];	
 }
+
+
+//Run all necessary schema updates
+for($i=$current_version+1; $i<count($schema_updates); $i++)
+{
+	$dcdb->queryExec($schema_updates[$i], $query_error);
+	if ($query_error) die("Error: $query_error");
+
+	// Bump up the version number
+	$dcdb->queryExec("INSERT INTO schema_version (version, date_installed) VALUES ($i, DATETIME('now'));", $query_error);
+	if ($query_error) die("Error: $query_error"); 
+}
+
 ?>

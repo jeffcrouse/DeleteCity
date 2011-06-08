@@ -92,8 +92,6 @@ http://www.youtube.com/watch?v=vQsFI4Wp6kI				removed by user
 
 -- Clean up runcache -- it's messy!
 
--- System for incremental database updates (for instance, adding the 'posted' column to a running plugin). 
-
 -- Database security: save database file outside of web-readable directory?  Is there a better way?
 
 -- Central database (on deletecity.org) ping when a deleted video is found. (optional for user)

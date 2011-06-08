@@ -76,7 +76,7 @@ function deletecity_warning()
 	if(!is_executable($runcache)) $not_executable[] = $runcache;
 	if(!is_executable($youtube_dl)) $not_executable[] = $youtube_dl;
 	
-	if(!is_executable($runcache) || !is_executable($youtube_dl)):
+	if(count($not_executable)>0):
 	?>
 	<div class='error fade'>
 		<p>
@@ -240,7 +240,7 @@ function deletecity_deactivate()
 
 
 // --------------------------------------------------------------------------
-// CACHING EVENT
+// CACHING EVENT - call runcache in the background
 add_action( 'runcache_function_hook', 'runcache' );
 function runcache()
 {
@@ -266,7 +266,8 @@ function runcache()
 
 
 // --------------------------------------------------------------------------
-// POSTING EVENT
+// POSTING EVENT - take all videos that are marked as 'removed' and that haven't 
+// been posted yet and make a WP post 
 add_action( 'post_videos_function_hook', 'post_removed_videos' );
 function post_removed_videos()
 {	
@@ -335,11 +336,10 @@ function post_removed_videos()
 *
 *	ADMIN
 *
-**********************************/
+********************************/
 
 if ( is_admin() )
 {
-
 	// Handle submitted data
 	if(isset($_REQUEST['dc_do_action']) && $_REQUEST['dc_do_action']=='true')
 	{
@@ -583,6 +583,19 @@ if ( is_admin() )
 			</p>
 		</form>
 		</div>
+		<!--
+		<?php
+		/*
+		$result = $dcdb->query("SELECT sql,name,type FROM sqlite_master ORDER BY type DESC", SQLITE_ASSOC, $query_error); 
+		if ($query_error)	die("Error: $query_error"); 
+		if (!$result)		die("Error: Impossible to execute query.");
+		while($row = $result->fetch(SQLITE_ASSOC))
+		{ 
+			print_r($row);
+		}
+		*/
+		?>
+		-->
 	<?php
 	}	
 
