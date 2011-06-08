@@ -438,9 +438,9 @@ if ( is_admin() )
 				<button name="action" value="stopcache" type="submit">Stop Cache Now (pid <?php echo $pid; ?>)</button>
 				<?php else: ?>
 				<button name="action" value="runcache" type="submit">Run Cache Now</button>
+				<button name="action" value="check_for_deleted" type="submit">Check for Deleted Videos Now</button>
 				<?php endif; ?>
 				<button name="action" value="post_videos" type="submit">Post Videos Now</button>
-				<button name="action" value="check_for_deleted" type="submit">Check for Deleted Videos Now</button>
 				<input type="hidden" name="dc_do_action" value="true" />
 			</form>
 			</p>
@@ -672,15 +672,15 @@ if ( is_admin() )
 		{ 
 			$video = new Video( $row['youtube_id'] );
 			?>
-			<div style="width: 250px; float: left; padding-bottom: 20px;">
-				<div style="height: 20px; width: 220px; font-weight: bold;">
+			<div class="dc-admin-video-box">
+				<div class="dc-admin-video-title">
 					<a href="javascript:dc_delete_video('<?php echo $video->youtube_id; ?>')">
 						<img src="<?php echo $dc_plugin_dir; ?>gs/delete_icon.gif" />
 					</a>
 					<?php echo $video->title; ?>
 				</div>
 				<a href="javascript:dc_show_video('<?php echo $video->youtube_id; ?>');">
-					<img src="<?php echo $video->thumb_url; ?>" style="width: 240px; height: 180px;" />
+					<img src="<?php echo $video->thumb_url; ?>" width="240" height="180" />
 				<a>
 				<b>age: </b> <?php echo ($video->age > 1) ? "{$video->age} days" : ($video->age*24)." hours"; ?><br />
 				<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
@@ -689,19 +689,20 @@ if ( is_admin() )
 		}
 		
 		$pages = ceil($total / $results_per_page);
-		if($pages > 1):
 		?>
 		
+		<?php if($pages > 1): ?>
+		<!-- START PAGINATION -->
 		<br style="clear: both;" />
-		<div style="height: 30px; border-top: 1px solid black; padding-bottom: 10px; padding-top: 10px;">
+		<div id="dc-pagination">
 		
 			<?php if($page > 0): ?>
-			<div style="float: left; width: 90px; font-size: 16px; padding-bottom: 5px;">
+			<div class="dc-page-number" style="width: 90px;">
 			<a href="javascript:dc_set_page(<?php echo $page-1; ?>);">Previous</a>
 			</div>
 			<?php endif; ?>
 			<?php for($i=0; $i<$pages; $i++): ?>
-				<div style="float: left; width: 40px; font-size: 16px; padding-bottom: 5px;">
+				<div class="dc-page-number" style="width: 40px;">
 				<?php if($i!=$page): ?>
 				<a href="javascript:dc_set_page(<?php echo $i; ?>);"><?php echo $i+1; ?></a>
 				<?php else: ?>
@@ -711,15 +712,17 @@ if ( is_admin() )
 			<?php endfor; ?>
 			
 			<?php if($page < $pages-1): ?>
-			<div style="float: right; width: 60px; font-size: 16px; padding-bottom: 5px;">
+			<div class="dc-page-number" style="width: 60px;">
 			<a href="javascript:dc_set_page(<?php echo $page+1; ?>);">Next</a>
 			</div>
 			<?php endif; ?>
 			
 		</div>
 		
+		<?php endif; ?>
+		<!-- END PAGINATION -->
+		
 		<?php
-		endif;
 		die(); // this is required to return a proper result
 	}
 }

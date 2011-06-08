@@ -62,6 +62,8 @@ find out more about it here:  http://rg3.github.com/youtube-dl/
 TO DO
 =========================
 
+-- Blacklist checks for existence of string, not word.  For instance, any word with 'ass' anywhere in it (ie: assembly) will be blacklisted.
+
 -- Sort videos by feed
 
 -- Allow usernames in blacklist
