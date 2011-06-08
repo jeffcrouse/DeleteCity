@@ -138,7 +138,7 @@ function deletecity_activate()
 	
 	if(!get_option('dc_blacklist'))
 	{
-		add_option('dc_blacklist',  "sexy, milf, whores, porn, xxx");
+		add_option('dc_blacklist',  "sexy, milf, whores, porn, xxx, pokemon, anal, shemale, fetish");
 	}
 	
 	if(!get_option('dc_max_cache_size'))
@@ -288,7 +288,7 @@ function post_removed_videos()
 	{ 
 		$url = sprintf("%s/%s", WP_PLUGIN_URL, str_replace(basename( __FILE__), "", $video->vid_path));
 		$content .= "<li><b><a href=\"$url\">{$video->title}</a></b>: {$video->content}</li>";
-		$video->mark_as_posted();
+		//$video->mark_as_posted();
 	}
 	$content .= "</ol>";
 	
@@ -328,6 +328,11 @@ if ( is_admin() )
 				{
 					sleep(1);
 				}
+				break;
+			case 'check_for_deleted':
+				$dir = escapeshellarg(get_option('dc_cache_dir'));
+				$db = escapeshellarg(get_option('dc_db_file'));
+				`php $runcache --find_deleted_only --maxage=$max_age --db=$db --cachedir=$dir >> $dclogfile 2>&1 &`;
 				break;
 			case 'post_videos':
 				post_removed_videos();
@@ -418,6 +423,7 @@ if ( is_admin() )
 				<button name="action" value="runcache" type="submit">Run Cache Now</button>
 				<?php endif; ?>
 				<button name="action" value="post_videos" type="submit">Post Videos Now</button>
+				<button name="action" value="check_for_deleted" type="submit">Check for Deleted Videos Now</button>
 				<input type="hidden" name="dc_do_action" value="true" />
 			</form>
 			</p>
@@ -436,27 +442,38 @@ if ( is_admin() )
 			<script type="text/javascript">
 			$.ajaxSetup({cache:false});
 			$('input[name=filter]').click(function(){
+				current_page = 0;
 				dc_refresh();
 			});
+			
+			var current_page = 0;
+			
 			function dc_show_video(id)
 			{
 				var data = {action: 'dc_watch_vid', youtube_id: id};
 				$("#video-player").load(ajaxurl, data, function(){
-					$(this).dialog({
-						width: 680,
-						height:530,
-						modal: true
-					});
+					$(this).dialog({width: 680, height:530, modal: true});
 				});
 			}
 			function dc_refresh()
 			{
 				var filter = $('input[name=filter]:checked').val();
-				var data = {action: 'dc_get_vids', page: '1', 'filter': filter};
+				var data = {action: 'dc_get_vids', dc_page: current_page, dc_filter: filter};
 				$("#videos").load(ajaxurl, data);
 				$("#log").load("<?php echo $dc_plugin_dir; ?>deletecity.log", function() {
 					$("#log").scrollTop($("#log")[0].scrollHeight);
 				});
+			}
+			function dc_set_page(new_page)
+			{
+				current_page = new_page;
+				dc_refresh();
+			}
+			function dc_delete_video(id)
+			{
+				var filter = $('input[name=filter]:checked').val();
+				var data = {action: 'dc_get_vids', dc_page: current_page, dc_filter: filter, dc_delete: id};
+				$("#videos").load(ajaxurl, data);
 			}
 			dc_refresh();
 			<?php if($pid): ?>
@@ -473,31 +490,42 @@ if ( is_admin() )
 	add_action('wp_ajax_dc_get_vids', 'dc_get_vids');
 	function dc_get_vids()
 	{
-		global $dcdb, $dclogfile;
+		global $dcdb, $dclogfile, $dc_plugin_dir;
 	
-		$dc_plugin_dir = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
-		$page = $_POST['page'];
-		$filter = $_POST['filter'];
+		if(isset($_POST['dc_delete']))
+		{
+			Video::delete( $_POST['dc_delete'] );
+		}
+		
+		$page = $_POST['dc_page'];
+		$filter = $_POST['dc_filter'];
+		$results_per_page = 12;
+		$offset = $results_per_page * $page;
 	
+		// Assemble the SQL 
 		$sql="SELECT youtube_id FROM videos";
 		if($filter=='removed')
 		{
 			$sql .= " WHERE removed>0 ";
 		}
-		$sql .= " ORDER BY date_added DESC LIMIT 12";
-		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
-		if ($query_error)
-			die("Error: $query_error"); 
-			
-		if (!$result)
-			die("Error: Impossible to execute query.");
+		$sql .= " ORDER BY date_added DESC ";
 		
+		// Get the total number of videos
+		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
+		if ($query_error) 	die("Error: $query_error"); 
+		if (!$result) 		die("Error: Impossible to execute query.");
 		$total = $result->numRows();
+	
+		// Get the videos for this page
+		$sql .= " LIMIT $results_per_page OFFSET $offset";
+		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
+		if ($query_error) 	die("Error: $query_error"); 
+		if (!$result) 		die("Error: Impossible to execute query.");
+	
 		$ar=getDirectorySize(get_option('dc_cache_dir'), "mp4"); 
 		?>
 		
-		<b>Total Cache Size:</b> <?php echo $ar['count']; ?> videos, <?php echo sizeFormat($ar['size']); ?><br /> 
-		<br /> 
+		<p><b>Total Cache Size:</b> <?php echo $ar['count']; ?> videos, <?php echo sizeFormat($ar['size']); ?></p> 
 		<?php
 		if($total==0)
 		{
@@ -505,15 +533,16 @@ if ( is_admin() )
 			die();
 		}
 		
-		$i=$total;
-		
 		while($row = $result->fetch(SQLITE_ASSOC))
 		{ 
 			$video = new Video( $row['youtube_id'] );
 			?>
 			<div style="width: 250px; float: left; padding-bottom: 20px;">
 				<div style="height: 20px; width: 220px; font-weight: bold;">
-					<!--[<?php echo $i; ?>/<?php echo $total; ?>]--> <?php echo $video->title; ?>
+					<a href="javascript:dc_delete_video('<?php echo $video->youtube_id; ?>')">
+						<img src="<?php echo $dc_plugin_dir; ?>delete_icon.gif" />
+					</a>
+					<?php echo $video->title; ?>
 				</div>
 				<a href="javascript:dc_show_video('<?php echo $video->youtube_id; ?>');">
 					<img src="<?php echo $video->thumb_url; ?>" style="width: 240px; height: 180px;" />
@@ -522,8 +551,39 @@ if ( is_admin() )
 				<b>by: </b> <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
 			</div>
 			<?php
-			$i--;
 		}
+		
+		$pages = ceil($total / $results_per_page);
+		?>
+		
+		<br style="clear: both;" />
+		<div style="height: 30px; border-top: 1px solid black; padding-bottom: 10px; padding-top: 10px;">
+		
+			<?php if($page > 0): ?>
+			<div style="float: left; width: 90px; font-size: 16px; padding-bottom: 5px;">
+			<a href="javascript:dc_set_page(<?php echo $page-1; ?>);">Previous</a>
+			</div>
+			<?php endif; ?>
+			<?php for($i=0; $i<$pages; $i++): ?>
+				<div style="float: left; width: 40px; font-size: 16px; padding-bottom: 5px;">
+				<?php if($i!=$page): ?>
+				<a href="javascript:dc_set_page(<?php echo $i; ?>);"><?php echo $i+1; ?></a>
+				<?php else: ?>
+				<?php echo $i+1; ?>
+				<?php endif; ?>
+				</div>
+			<?php endfor; ?>
+			
+			<?php if($page < $pages-1): ?>
+			<div style="float: right; width: 60px; font-size: 16px; padding-bottom: 5px;">
+			<a href="javascript:dc_set_page(<?php echo $page+1; ?>);">Next</a>
+			</div>
+			<?php endif; ?>
+			
+		</div>
+		
+		
+		<?php
 		die(); // this is required to return a proper result
 	}
 
@@ -532,7 +592,7 @@ if ( is_admin() )
 	add_action('wp_ajax_dc_watch_vid', 'dc_watch_vid');
 	function dc_watch_vid()
 	{
-		$dc_plugin_dir = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
+		global $dc_plugin_dir;
 		$youtube_id = $_POST['youtube_id'];
 		$video = new Video($youtube_id);
 		?>
@@ -587,7 +647,6 @@ if ( is_admin() )
 		<p style="color: #FF0000;">WARNING:  The caching process is currently running.  Saving options now will restart it.</p>
 		<?php endif; ?>
 		<form method="post" action="">
-
 
 			<h3>Cache</h3>
 			Directory: <input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 500px;" disabled /><br />

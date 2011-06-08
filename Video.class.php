@@ -235,6 +235,7 @@ class Video {
 		}
 	}
 	
+	// ----------------------------------------------
 	static function get_unposted_removed()
 	{
 		global $dcdb;
@@ -258,7 +259,20 @@ class Video {
 		}
 		return $videos;
 	}
+	
+	// ----------------------------------------------
+	static function delete($youtube_id)
+	{
+		global $dcdb;
+		$video = new Video($youtube_id);
+		$video->mark_as_expired();
+		
+		$sql="DELETE FROM videos WHERE youtube_id='{$youtube_id}'";
+		$query = $dcdb->queryExec($sql, $error);
+		if (!$query) 
+		{
+			throw new Exception( $error );
+		} 
+	}
 }
-
-
 ?>

@@ -15,7 +15,7 @@ print "Status: pid ". getmypid()." starting at " . date("F j, Y, g:i a") . "\n";
 
 /*******************************
 *
-*	PARSE ARGS
+*	PARSE/SET ARGS
 *
 *******************************/
 
@@ -24,9 +24,24 @@ $max_age = $args['maxage'];
 $rate_limit = isset($args['ratelimit']) ? $args['ratelimit'] : '500k';
 Video::$cache_dir = $args['cachedir'];
 $dcdbfile = $args['db'];
-$blacklist = preg_split("/[\s]*[,][\s]*/", $args['blacklist']);
+$blacklist = isset($args['blacklist']) 
+	? preg_split("/[\s]*[,][\s]*/", $args['blacklist'])
+	: array();
 
-print "\tMax Age: $max_age\n";
+$do_cache = true;
+$do_orphan_check=true;
+$do_check_for_deletions=true;
+
+if($args['find_deleted_only'])
+{
+	$do_cache = false;
+	$do_orphan_check=false;
+}
+
+$youtube_dl = dirname(__FILE__)."/youtube-dl";
+
+print "\tDelete videos older than $max_age days\n";
+print "\tyoutube-dl: $youtube_dl\n";
 print "\tRate Limit: $rate_limit\n";
 print "\tCache Dir: {$args['cachedir']}\n";
 print "\tDatabase: $dcdbfile\n";
@@ -70,37 +85,42 @@ if(function_exists('pcntl_signal'))
 *
 *******************************/
 
-if(empty($max_age))
-{
-	print "Error: You must provide the maxage argument\n";
-	exit;
-}
-
 if($pid->already_running)
 {
 	print "Error: runcache is already running.\n";
 	exit;
 }
 
-$youtube_dl = dirname(__FILE__)."/youtube-dl";
-if(!file_exists($youtube_dl))
+if(!$dcdb)
+{
+	print "Error: Database not found\n";
+	exit;
+}
+
+if($do_check_for_deletions && empty($max_age))
+{
+	print "Error: You must provide the maxage argument\n";
+	exit;
+}
+
+if($do_cache && !file_exists($youtube_dl))
 {
 	print "Error: $youtube_dl not found\n";
 	exit;
 }
 
-if(!is_executable($youtube_dl))
+if($do_cache && !is_executable($youtube_dl))
 {
 	print "Error: $youtube_dl not executable\n";
 	exit;
 }
 
-if(!file_exists(Video::$cache_dir))
+if($do_cache && !file_exists(Video::$cache_dir))
 {
 	mkdir(Video::$cache_dir, 0777, true);
 }
 
-if(!is_writable(Video::$cache_dir))
+if($do_cache && !is_writable(Video::$cache_dir))
 {
 	print "Error: ".Video::$cache_dir." is not writable.\n";
 	exit;
@@ -114,122 +134,123 @@ if(!is_writable(Video::$cache_dir))
 *
 *******************************/
 
-$result = $dcdb->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
-if ($query_error)
-    die("Error: $query_error"); 
-    
-if (!$result)
-    die("Error: Impossible to execute query.");
-
-$num_feeds = $result->numRows();
-$cur_feed=1;
-
-
-// Loop through all of the feeds in the database
-while($row = $result->fetch(SQLITE_ASSOC))
+if($do_cache)
 {
-	$url = $row['feed_url'];
-
-	if(strpos($url, "http://gdata.youtube.com/feeds/api/")!=0)
-	{
-		print "Error: [$cur_feed/$num_feeds] Must be a gdata.youtube.com/feeds/api feed\n";
-		continue;
-	}
-
-	print "Status: Fetching feed $cur_feed of $num_feeds: $url\n";
-
-	// Download feed
-	$response = get_web_page( $url );
-	if($response['errno'] >0)
-	{
-		print "Error: {$response['errmsg']}\n";
-		continue;
-	}
-	
-	// Try to parse feed
-	$xmlstr = $response['content'];
-	$xmldoc = simplexml_load_string($xmlstr);
-	if (!$xmldoc)
-	{
-		$errors = libxml_get_errors();
-		foreach ($errors as $error)
-		{
-			echo display_xml_error($error, $xml);
-		}
-		libxml_clear_errors();
-		continue;
-	}
-
-	if(!isset($xmldoc->entry) || count($xmldoc->entry)==0)
-	{
-		print "Error: Feed doesn't contain any entries\n";
-		continue;
-	}
-	
-	// TO DO:  Check to make sure this is a valid YouTube feed
-	// maybe some XPaths to make sure the status is OK and that it has entries, etc.
-
-	$num_vids = count($xmldoc->entry);
-	$cur_vid=1;
-	
-	// Loop through all of the "entries" in the feed.
-	foreach($xmldoc->entry as $entry)
-	{	
-		$vid_url = $entry->link[0]['href'];				// TO DO:  We can't be sure that the href is element 0
-		preg_match("/v=([^&]+)/", $vid_url, $matches);
-
-		$video = new Video( $matches[1] );
-		$video->title = $entry->title;
-		$video->content = $entry->content;
-		$video->author = $entry->author->name;
+	$result = $dcdb->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
+	if ($query_error)
+		die("Error: $query_error"); 
 		
-		$blacklisted = false;
-		foreach($blacklist as $word)
+	if (!$result)
+		die("Error: Impossible to execute query.");
+	
+	$num_feeds = $result->numRows();
+	$cur_feed=1;
+	
+	// Loop through all of the feeds in the database
+	while($row = $result->fetch(SQLITE_ASSOC))
+	{
+		$url = $row['feed_url'];
+	
+		if(strpos($url, "http://gdata.youtube.com/feeds/api/")!=0)
 		{
-			if(stristr($video->title, $word) || stristr($video->content, $word))
+			print "Error: [$cur_feed/$num_feeds] Must be a gdata.youtube.com/feeds/api feed\n";
+			continue;
+		}
+	
+		print "Status: Fetching feed $cur_feed of $num_feeds: $url\n";
+	
+		// Download feed
+		$response = get_web_page( $url );
+		if($response['errno'] >0)
+		{
+			print "Error: {$response['errmsg']}\n";
+			continue;
+		}
+		
+		// Try to parse feed
+		$xmlstr = $response['content'];
+		$xmldoc = simplexml_load_string($xmlstr);
+		if (!$xmldoc)
+		{
+			$errors = libxml_get_errors();
+			foreach ($errors as $error)
 			{
-				print "\tStatus: [$cur_vid/$num_vids] \"$word\" found. Skipping\n";
-				$blacklisted = true;
+				echo display_xml_error($error, $xml);
 			}
+			libxml_clear_errors();
+			continue;
 		}
-		
-		// Skip any videos that contain a blacklisted word.
-		if($blacklisted) continue;
-		
-		// If we need to download the video, do it!
-		if(!$video->expired && !file_exists($video->vid_path))
-		{
-			print "\tStatus: [$cur_vid/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
-
-			// http://rg3.github.com/youtube-dl/documentation.html#d6
-			$cache_dir = Video::$cache_dir;
-			`$youtube_dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
-		}
-		
-		// If the video hasn't been saved to the database, save it!
-		if($video->in_db)
-		{
-			$video->seen_in_feed();
-		}
-		else
-		{
-			if(file_exists($video->vid_path))
-			{
-				print "\tStatus: [$cur_vid/$num_vids] Adding \"{$entry->title}\" ({$video->youtube_id}) to database\n";
 	
-				$video->save();
-			}
-			else
-			{
-				print "\tError: [$cur_vid/$num_vids] File was not successfully downloaded.  Not adding to database.\n";
-			}
+		if(!isset($xmldoc->entry) || count($xmldoc->entry)==0)
+		{
+			print "Error: Feed doesn't contain any entries\n";
+			continue;
 		}
-		$cur_vid++;
-	}
-	$cur_feed++;
+		
+		// TO DO:  Check to make sure this is a valid YouTube feed
+		// maybe some XPaths to make sure the status is OK and that it has entries, etc.
 	
-} // end while(more YouTube feeds)
-
+		$num_vids = count($xmldoc->entry);
+		$cur_vid=1;
+		
+		// Loop through all of the "entries" in the feed.
+		foreach($xmldoc->entry as $entry)
+		{	
+			$vid_url = $entry->link[0]['href'];				// TO DO:  We can't be sure that the href is element 0
+			preg_match("/v=([^&]+)/", $vid_url, $matches);
+	
+			$video = new Video( $matches[1] );
+			$video->title = $entry->title;
+			$video->content = $entry->content;
+			$video->author = $entry->author->name;
+			
+			$blacklisted = false;
+			foreach($blacklist as $word)
+			{
+				if(stristr($video->title, $word) || stristr($video->content, $word))
+				{
+					print "\tStatus: [$cur_vid/$num_vids] \"$word\" found in video \"{$video->title}\". Skipping\n";
+					$blacklisted = true;
+				}
+			}
+			
+			// Skip any videos that contain a blacklisted word.
+			if(!$blacklisted)
+			{
+				// If we need to download the video, do it!
+				if(!$video->expired && !file_exists($video->vid_path))
+				{
+					print "\tStatus: [$cur_vid/$num_vids] Downloading \"{$entry->title}\" ({$video->youtube_id})\n";
+		
+					// http://rg3.github.com/youtube-dl/documentation.html#d6
+					$cache_dir = Video::$cache_dir;
+					`$youtube_dl --continue --no-overwrites --ignore-errors --format=18 --output="{$cache_dir}/%(id)s.%(ext)s" --rate-limit=$rate_limit $vid_url`;
+				}
+				
+				// If the video hasn't been saved to the database, save it!
+				if($video->in_db)
+				{
+					$video->seen_in_feed();
+				}
+				else
+				{
+					if(file_exists($video->vid_path))
+					{
+						print "\tStatus: [$cur_vid/$num_vids] Adding \"{$entry->title}\" ({$video->youtube_id}) to database\n";
+						$video->save();
+					}
+					else
+					{
+						print "\tError: [$cur_vid/$num_vids] File was not successfully downloaded.  Not adding to database.\n";
+					}
+				}
+			}
+			$cur_vid++;
+		}
+		$cur_feed++;
+		
+	} // end while(more YouTube feeds)
+}
 
 
 /*******************************
@@ -239,37 +260,39 @@ while($row = $result->fetch(SQLITE_ASSOC))
 *
 *******************************/
 
-print "Status: Checking for orphans\n";
-$dhandle = opendir(Video::$cache_dir);
-if ($dhandle)
+if($do_orphan_check)
 {
-	while (false !== ($fname = readdir($dhandle)))
+	print "Status: Checking for orphans\n";
+	$dhandle = opendir(Video::$cache_dir);
+	if ($dhandle)
 	{
-		if ($fname!='.' && $fname!='..' && !is_dir("./$fname") && !strpos($fname,".part"))
+		while (false !== ($fname = readdir($dhandle)))
 		{
-			$path_parts = pathinfo($fname);
-			$youtube_id = $path_parts['filename'];
-			if(!empty($youtube_id))
+			if ($fname!='.' && $fname!='..' && !is_dir("./$fname") && !strpos($fname,".part"))
 			{
-				$video = new Video( $youtube_id );
-				if(!$video->in_db)
+				$path_parts = pathinfo($fname);
+				$youtube_id = $path_parts['filename'];
+				if(!empty($youtube_id))
 				{
-					if($video->fetch_info()) 
+					$video = new Video( $youtube_id );
+					if(!$video->in_db)
 					{
-						print "\tStatus: Inserting an orphaned video file: $youtube_id.\n";
-						$video->save();
-					}
-					else 
-					{
-						print "\tError: Couldn't fetch info for $youtube_id.  Skipping\n";
+						if($video->fetch_info()) 
+						{
+							print "\tStatus: Inserting an orphaned video file: $youtube_id.\n";
+							$video->save();
+						}
+						else 
+						{
+							print "\tError: Couldn't fetch info for $youtube_id.  Skipping\n";
+						}
 					}
 				}
 			}
 		}
+		closedir($dhandle);
 	}
-	closedir($dhandle);
 }
-
 
 
 /*******************************
@@ -277,40 +300,42 @@ if ($dhandle)
 *	CHECK FOR DELETED VIDEOS
 *
 *******************************/
-
-// Now loop through every video where removed=0 and check to see if it still exists on YouTube
-print "Status: Checking for removed videos\n";
-
-$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed=0 AND expired=0", SQLITE_ASSOC, $query_error); 
-if ($query_error)
-    die("Error: $query_error"); 
-    
-if (!$result)
-    die("Error: Impossible to execute query.");
-
-
-$total = $result->numRows();
-$i=1;
-while($row = $result->fetch(SQLITE_ASSOC))
-{ 
-	$video = new Video( $row['youtube_id'] );
-
-	if($video->check_remote())
-	{
-		print "\tStatus: [$i/$total] {$row['youtube_id']} still exists.  Age={$video->age}\n";
-		if($video->age > $max_age)
+if($do_check_for_deletions)
+{
+	// Now loop through every video where removed=0 and check to see if it still exists on YouTube
+	print "Status: Checking for removed videos\n";
+	
+	$result = $dcdb->query("SELECT youtube_id FROM videos WHERE removed=0 AND expired=0", SQLITE_ASSOC, $query_error); 
+	if ($query_error)
+		die("Error: $query_error"); 
+		
+	if (!$result)
+		die("Error: Impossible to execute query.");
+	
+	
+	$total = $result->numRows();
+	$i=1;
+	while($row = $result->fetch(SQLITE_ASSOC))
+	{ 
+		$video = new Video( $row['youtube_id'] );
+	
+		if($video->check_remote())
 		{
-			$video->mark_as_expired();
+			print "\tStatus: [$i/$total] {$row['youtube_id']} still exists.  Age={$video->age}\n";
+			if($video->age > $max_age)
+			{
+				print "\tStatus: [$i/$total] {$row['youtube_id']} has expired.  Deleting video file.\n";
+				$video->mark_as_expired();
+			}
 		}
+		else
+		{
+			print "\tStatus: [$i/$total] {$row['youtube_id']} has been removed!\n";
+			$video->mark_as_removed();
+		} 
+		$i++;
 	}
-    else
-    {
-    	print "\tStatus: [$i/$total] {$row['youtube_id']} has been removed!\n";
-    	$video->mark_as_removed();
-    } 
-    $i++;
 }
-
 
 /*******************************
 *

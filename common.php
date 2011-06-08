@@ -1,5 +1,4 @@
 <?php
-date_default_timezone_set(getLocalTimezone());
 
 // ------------------------------------
 function get_web_page( $url )
@@ -304,6 +303,6 @@ function getLocalTimezone()
         return false;
     return $index[0];
 }
-
+date_default_timezone_set(getLocalTimezone());
 
 ?>

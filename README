@@ -62,21 +62,19 @@ find out more about it here:  http://rg3.github.com/youtube-dl/
 TO DO
 =========================
 
+-- Sort videos by feed
+
 -- Allow usernames in blacklist
 
 -- regex validation for rate limit 
 
 -- Imlement dc_max_cache_size options (they currently do nothing)
 
--- Add "Check for deleted videos" button to admin.  Add a command line option to runcache for "check only - don't download"
-
 -- Can I include some file in runcache that will allow me to get Wordpress options? That would allow me to avoid all of this parameter passing...
 
 -- What should happen if someone changes their cache directory?
 
 -- Redesign admin interface -- need some UX help
-
-- Paginate videos!
 
 -- Testing if video had been removed: testing for presence of <?xml in response probably isn't good enough.  Here are some removed videos to test with.
 http://www.youtube.com/watch?v=eouvTRd6szQ 				account terminated
