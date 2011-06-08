@@ -22,6 +22,24 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+Contents:
+1. admin_notices
+2. init
+3. wp-head
+4. wp-footer
+5. cron_schedules
+6. deletecity_activate
+7. deletecity_deactivate
+8. runcache_function_hook
+9. post_videos_function_hook
+10. Admin
+	- admin_menu
+	- deletecity_settings_page
+	- deletecity_status_page
+	- AJAX functions
+11. Utility functions
 */
 
 // Make sure we don't expose any info if called directly
@@ -34,15 +52,11 @@ require_once("common.php");
 require_once("Video.class.php");
 require_once("dcdb.php");
 
-
-//ini_set('display_errors', 1); 
-//error_reporting(E_ALL);
-
-
-global $dcdb, $dclogfile, $runcache;
-
+ini_set('display_errors', 1); 
+error_reporting(E_ALL);
 
 // Set some vaaaaaarrrrs
+global $dcdb; //, $dclogfile, $runcache;
 $dclogfile = dirname(__FILE__)."/deletecity.log";
 $runcache = dirname(__FILE__)."/runcache.php";
 $dc_plugin_dir = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
@@ -88,14 +102,52 @@ function deletecity_warning()
 }
 
 
-// --------------------------------------------------------------------------
-// LOGGING
-function dc_log($message) 
+
+// --------------------------------------------
+add_action('init', 'dc_load');
+function dc_load()
 {
-	global $dclogfile;
-	$loghandle = fopen($dclogfile, 'a');
-	fwrite($loghandle, "[deletecity] ".date("F j, Y, g:i a")." $message\n");
+	global $dc_plugin_dir;
+	wp_enqueue_style( 'dc-style', "{$dc_plugin_dir}styles.css"); 
+	
+	wp_enqueue_style( 'jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/smoothness/jquery-ui.css'); 
+	wp_enqueue_script( 'jw-player' , "{$dc_plugin_dir}mediaplayer-5.6/jwplayer.js");
+
+  	wp_deregister_script( 'jquery' );
+    wp_register_script( 'jquery', 'http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js');
+    wp_enqueue_script( 'jquery' );
+
+	wp_enqueue_script( 'jquery-ui-core' );
+	wp_enqueue_script( 'jquery-ui-dialog' );
+	
+	// declare the URL to the file that handles the AJAX request (wp-admin/admin-ajax.php)
+	wp_localize_script( 'jquery', 'MyAjax', array( 'ajaxurl' => admin_url( 'admin-ajax.php' ) ) );
 }
+
+
+// --------------------------------------------
+add_action('wp_head', 'dc_js_header' );
+function dc_js_header() // this is a PHP function
+{
+?>
+	<script type="text/javascript">
+	function dc_show_video(id)
+	{
+		var data = {action: 'dc_load_player', youtube_id: id};
+		$("#dc-video-box").load(MyAjax.ajaxurl, data, function(result) {
+			$("#dc-video-box").dialog({width: 680, height:530, modal: true});
+		});
+	}
+	</script>
+<?php
+} 
+
+// --------------------------------------------
+add_action('wp_footer', 'dc_footer' );
+function dc_footer() // this is a PHP function
+{
+	?><div id="dc-video-box"></div><?php
+} 
 
 
 // --------------------------------------------------------------------------
@@ -212,85 +264,54 @@ function runcache()
 }
 
 
-// --------------------------------------------------------------------------
-// Finds the file created by runcache that contains its PID
-// If it exists, and the process is still running, it returns the ID
-function get_runcache_pid()
-{
-	$pid_file = dirname(__FILE__)."/runcache.php.pid";
-	if( !file_exists($pid_file) )
-	{
-		return false;
-	}
-	$pid = (int)trim( file_get_contents($pid_file) );
-	if(!is_numeric($pid))
-	{
-		return false;
-	}
-	$process = trim(`ps aux | grep $pid | grep -v grep`);
-	if(empty($process))
-	{
-		unlink($pid_file);
-		return false;
-	}
-	return $pid;
-}
-
-// --------------------------------------------------------------------------
-function stopcache()
-{
-	// Kill the runcache process if it is running.
-	// It would be great to use the pcntl here, but it's not widely supported
-
-	$pid = get_runcache_pid();
-	if(!$pid)
-	{
-		dc_log("Caching process is not running.");
-		return;
-	}
-
-	if(posix_kill($pid, 0)) // see if process is running
-	{
-		posix_kill($pid, 9);
-		$error = posix_get_last_error();
-		if($error==0)
-		{
-			dc_log("Killed process $pid");
-			unlink(dirname(__FILE__)."/runcache.php.pid");
-		}
-		else
-		{
-			dc_log("Warning: Couldn't kill caching process ($pid).");
-			dc_log(posix_strerror($error));
-		}
-	}
-	else
-	{
-		dc_log("Caching process ($pid) is not running.");
-	}
-}
 
 // --------------------------------------------------------------------------
 // POSTING EVENT
 add_action( 'post_videos_function_hook', 'post_removed_videos' );
 function post_removed_videos()
 {	
-	$videos = Video::get_unposted_removed();
-	
-	if(count($videos) < 1)
+	try {
+		$videos = Video::get_unposted_removed();
+	} catch (Exception $e) {
+		dc_log($e->getMessage());
+	}
+
+	$num_videos = count($videos);
+	if($num_videos == 0)
 	{
 		dc_log("No videos to post");
 		return;
 	}
 	
-	$content = "<ol>";
-	foreach($videos as $video)
-	{ 
-		$url = sprintf("%s/%s", WP_PLUGIN_URL, str_replace(basename( __FILE__), "", $video->vid_path));
-		$content .= "<li><b><a href=\"$url\">{$video->title}</a></b>: {$video->content}</li>";
-		//$video->mark_as_posted();
-	}
-	$content .= "</ol>";
+	// Create the HTML to post
+	ob_start();
+	$i=0;
+	?>
+	
+	<div class="dc-videos">
+		<?php foreach($videos as $video): ?>
+			<div class="dc-video">
+				<div class="dc-title"><?php echo $video->title; ?></div>
+				<a href="javascript:dc_show_video('<?php echo $video->youtube_id; ?>');">
+				<img src="<?php echo $video->thumb_url; ?>" class="dc-thumbnail" />
+				</a>
+				<div class="dc-author">
+					<b>by:</b><a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a>
+				</div>
+			</div>
+			<?php
+			if($i==6) 
+			{
+				$more = $num_videos-6;
+				print "<!--more {$more} more videos after the break. -->";
+			}
+			?>
+		<?php $i++; endforeach; ?>
+	</div>
+	
+	<?php
+	$content = ob_get_contents();
+	ob_end_clean();
 	
 	// Create post object
 	$title = 'DeleteCity: Removed Videos of '.date("F j, Y, g:i a");
@@ -308,10 +329,17 @@ function post_removed_videos()
 }
 
 
-// --------------------------------------------------------------------------
-// ADMIN MENU
+
+
+/*******************************
+*
+*	ADMIN
+*
+**********************************/
+
 if ( is_admin() )
 {
+
 	// Handle submitted data
 	if(isset($_REQUEST['dc_do_action']) && $_REQUEST['dc_do_action']=='true')
 	{
@@ -380,16 +408,6 @@ if ( is_admin() )
 
 
 	// --------------------------------------------
-	add_action('init', 'dc_load');
-	function dc_load(){
-		wp_enqueue_style('jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/smoothness/jquery-ui.css'); 
-		wp_enqueue_script( 'jquery' );
-		wp_enqueue_script( 'jquery-ui-core' );
-		wp_enqueue_script( 'jquery-ui-dialog' );
-	}
-
-
-	// --------------------------------------------
 	function deletecity_status_page()
 	{
 		global $dclogfile, $dcdb, $dc_plugin_dir;
@@ -411,7 +429,6 @@ if ( is_admin() )
 					<a href="<?php echo $dc_plugin_dir.basename($dclogfile); ?>" target="_blank"><img src="<?php echo $dc_plugin_dir; ?>pop-out-arrow.gif" /></a>
 				</div>
 			</div>
-
 
 			<textarea readonly name="log" id="log" style="width: 95%; height: 100px;"></textarea>
 
@@ -437,8 +454,7 @@ if ( is_admin() )
 			<div id="videos" style="width: 95%;"></div>				
 			<div id="video-player"></div>
 			
-			<script type="text/javascript" src="<?php echo $dc_plugin_dir; ?>mediaplayer-5.6/jwplayer.js"></script>
-			<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.1/jquery.min.js"></script>
+
 			<script type="text/javascript">
 			$.ajaxSetup({cache:false});
 			$('input[name=filter]').click(function(){
@@ -448,13 +464,6 @@ if ( is_admin() )
 			
 			var current_page = 0;
 			
-			function dc_show_video(id)
-			{
-				var data = {action: 'dc_watch_vid', youtube_id: id};
-				$("#video-player").load(ajaxurl, data, function(){
-					$(this).dialog({width: 680, height:530, modal: true});
-				});
-			}
 			function dc_refresh()
 			{
 				var filter = $('input[name=filter]:checked').val();
@@ -475,18 +484,144 @@ if ( is_admin() )
 				var data = {action: 'dc_get_vids', dc_page: current_page, dc_filter: filter, dc_delete: id};
 				$("#videos").load(ajaxurl, data);
 			}
+			function dc_show_video(id)
+			{
+				var data = {action: 'dc_load_player', youtube_id: id};
+				$("#video-player").load(ajaxurl, data, function(result) {
+					$("#video-player").dialog({width: 680, height:530, modal: true});
+				});
+			}
 			dc_refresh();
 			<?php if($pid): ?>
 			setInterval(dc_refresh, 10000);
 			<?php endif; ?>
 			</script>
-
 		</div>
 		<?php
 	}
 
-	// --------------------------------------------
+
+	//--------------------------------------
+	// Render the settings page
+	function deletecity_settings_page()
+	{
+		global $dcdb;
+	
+		//must check that the user has the required capability 
+		if (!current_user_can('manage_options'))
+		{
+			wp_die( __('You do not have sufficient permissions to access this page.') );
+		} 
+		
+		$result = $dcdb->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
+		if ($query_error)
+			die("Error: $query_error"); 
+			
+		if (!$result)
+			die("Error: Impossible to execute query.");
+		
+		$urls = "";
+		while($row = $result->fetch(SQLITE_ASSOC))
+		{
+			$urls .= $row['feed_url']."\n";
+		}
+		$schedules = wp_get_schedules();
+		?>
+	
+		<div>
+		<h2>Delete City Options</h2>
+		<?php $pid = get_runcache_pid(); ?>
+		<?php if($pid): ?>
+		<p style="color: #FF0000;">WARNING:  The caching process is currently running.  Saving options now will restart it.</p>
+		<?php endif; ?>
+		<form method="post" action="">
+
+			<h3>Cache</h3>
+			Directory: <input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 500px;" disabled /><br />
+			Max Size: <input name="dc-max-cache-size" type="text" value="<?php echo get_option('dc_max_cache_size'); ?>"  style="width: 80px;" /> MB<br />
+			Rate Limit: <input name="dc-rate-limit" type="text" value="<?php echo get_option('dc_rate_limit'); ?>"  style="width: 80px;" /> (e.g. 50k or 44.6m)
+
+			<h3>Database File</h3>
+			<input name="dc-db-file" type="text" value="<?php echo get_option('dc_db_file'); ?>"  style="width: 90%;" disabled />
+
+			<h3>Cache Frequency</h3>
+			<p>How often should DeleteCity download videos from the sources?</p>
+			<ul>
+			<?php foreach($schedules as $slug => $schedule): ?>
+			<li>
+				<?php $checked = (get_option('dc_cache_schedule')==$slug) ? 'checked' : ''; ?>
+				<input type="radio" name="dc-cache-schedule" value="<?php echo $slug; ?>" <?php echo $checked; ?> /> 
+				<?php echo $schedule['display']; ?>
+			</li>
+			<?php endforeach; ?>
+			</ul>
+			
+			<h3>Post Frequency</h3>
+			<p>How often should DeleteCity post the videos it finds to your blog?</p>
+			<ul>
+			<?php foreach($schedules as $slug => $schedule): ?>
+			<li>
+				<?php $checked = (get_option('dc_post_schedule')==$slug) ? 'checked' : ''; ?>
+				<input type="radio" name="dc-post-schedule" value="<?php echo $slug; ?>" <?php echo $checked; ?> /> 
+				<?php echo $schedule['display']; ?>
+			</li>
+			<?php endforeach; ?>
+			</ul>
+			
+			<h3>Sources</h3>
+			<p>Check out <a href="http://code.google.com/apis/youtube/2.0/reference.html#Searching_for_videos">
+			this page for more information about source URLS</a>.</p>
+			<textarea name="dc-sources" style="width: 90%; height: 150px;"><?php echo $urls?></textarea>
+
+			<h3>Blacklist</h3>
+			<p>Videos containing these words in title or description will be skipped.</p>
+			<textarea name="dc-blacklist" style="width: 90%; height: 100px;"><?php echo get_option('dc_blacklist'); ?></textarea>
+			<p>
+				<input type="hidden" name="action" value="save_options" />
+				<input type="hidden" name="dc_do_action" value="true" />
+				<input type="submit" value="<?php _e('Save Changes') ?>" />
+			</p>
+		</form>
+		</div>
+	<?php
+	}	
+
+	// --------------------------------------------------------------------------
+	// Prints a player for a single video
+	// Args: youtube_id
 	// http://codex.wordpress.org/AJAX_in_Plugins
+	add_action('wp_ajax_dc_load_player', 'dc_load_video_player');
+	add_action('wp_ajax_nopriv_dc_load_player', 'dc_load_video_player');
+	function dc_load_video_player()
+	{
+		global $dc_plugin_dir;
+		$youtube_id = $_POST['youtube_id'];
+		$video = new Video($youtube_id);
+		?>
+			<div class="video-title" style="font-size: 18px; font-weight: bold;"><?php echo $video->title; ?></div>
+			<p>by <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a></p>
+			<div id="video-<?php echo $youtube_id; ?>">Loading the player ...</div>
+			[<a href="http://www.youtube.com/watch?v=<?php echo $video->youtube_id; ?>">original URL</a>]
+			<p><?php echo $video->content; ?></p>
+			<script type="text/javascript"> 
+			jwplayer("video-<?php echo $youtube_id; ?>").setup({
+				image: "<?php echo $video->thumb_url; ?>",
+				flashplayer: "<?php echo $dc_plugin_dir; ?>mediaplayer-5.6/player.swf", 
+				file: "<?php echo $video->vid_url; ?>", 
+				width: 640,
+				height: 360 
+			});
+			</script>
+		<?php
+		die();
+	}
+
+	// --------------------------------------------
+	// Prints pages of videos for the admin interface
+	// Args: 
+	//		dc_delete - the youtube_id of a video to delete
+	//		dc_page - 0-based page number
+	//		dc_filter - (removed | all)
 	add_action('wp_ajax_dc_get_vids', 'dc_get_vids');
 	function dc_get_vids()
 	{
@@ -582,120 +717,82 @@ if ( is_admin() )
 			
 		</div>
 		
-		
 		<?php
 		die(); // this is required to return a proper result
 	}
+}
 
-	//-------------------------------------
-	// AJAX action for loading video player
-	add_action('wp_ajax_dc_watch_vid', 'dc_watch_vid');
-	function dc_watch_vid()
+
+
+
+/*******************************
+*
+*	Utility Functions
+*
+********************************/
+	
+// --------------------------------------------------------------------------
+// If the process is still running, it returns the ID.  false otherwise
+function get_runcache_pid()
+{
+	// Finds the file created by runcache that contains its PID
+	$pid_file = dirname(__FILE__)."/runcache.php.pid";
+	if( !file_exists($pid_file) )
 	{
-		global $dc_plugin_dir;
-		$youtube_id = $_POST['youtube_id'];
-		$video = new Video($youtube_id);
-		?>
-			<div class="video-title" style="font-size: 18px; font-weight: bold;"><?php echo $video->title; ?></div>
-			<p>by <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a></p>
-			<div id="video-<?php echo $youtube_id; ?>">Loading the player ...</div>
-			<p><?php echo $video->content; ?></p>
-			<script type="text/javascript"> 
-			jwplayer("video-<?php echo $youtube_id; ?>").setup({
-				image: "<?php echo $video->thumb_url; ?>",
-				flashplayer: "<?php echo $dc_plugin_dir; ?>mediaplayer-5.6/player.swf", 
-				file: "<?php echo $video->vid_url; ?>", 
-				width: 640,
-				height: 360 
-			});
-			</script>
-		<?php
-		die();
+		return false;
 	}
-	
-	//--------------------------------------
-	// Render the settings page
-	function deletecity_settings_page()
+	$pid = (int)trim( file_get_contents($pid_file) );
+	if(!is_numeric($pid))
 	{
-		global $dcdb;
-	
-		//must check that the user has the required capability 
-		if (!current_user_can('manage_options'))
+		return false;
+	}
+	$process = trim(`ps aux | grep $pid | grep -v grep`);
+	if(empty($process))
+	{
+		unlink($pid_file);
+		return false;
+	}
+	return $pid;
+}
+
+// --------------------------------------------------------------------------
+function stopcache()
+{
+	// Kill the runcache process if it is running.
+	// It would be great to use the pcntl here, but it's not widely supported
+	$pid = get_runcache_pid();
+	if(!$pid)
+	{
+		dc_log("Caching process is not running.");
+		return;
+	}
+	if(posix_kill($pid, 0)) // see if process is running
+	{
+		posix_kill($pid, 9);
+		$error = posix_get_last_error();
+		if($error==0)
 		{
-			wp_die( __('You do not have sufficient permissions to access this page.') );
-		} 
-		
-		$result = $dcdb->query("SELECT feed_url FROM sources", SQLITE_ASSOC, $query_error); 
-		if ($query_error)
-			die("Error: $query_error"); 
-			
-		if (!$result)
-			die("Error: Impossible to execute query.");
-		
-		$urls = "";
-		while($row = $result->fetch(SQLITE_ASSOC))
-		{
-			$urls .= $row['feed_url']."\n";
+			dc_log("Killed process $pid");
+			unlink(dirname(__FILE__)."/runcache.php.pid");
 		}
-		$schedules = wp_get_schedules();
-		?>
-	
-		<div>
-		<h2>Delete City Options</h2>
-		<?php $pid = get_runcache_pid(); ?>
-		<?php if($pid): ?>
-		<p style="color: #FF0000;">WARNING:  The caching process is currently running.  Saving options now will restart it.</p>
-		<?php endif; ?>
-		<form method="post" action="">
+		else
+		{
+			dc_log("Warning: Couldn't kill caching process ($pid).");
+			dc_log(posix_strerror($error));
+		}
+	}
+	else
+	{
+		dc_log("Caching process ($pid) is not running.");
+	}
+}
 
-			<h3>Cache</h3>
-			Directory: <input name="dc-cache-dir" type="text" value="<?php echo get_option('dc_cache_dir'); ?>"  style="width: 500px;" disabled /><br />
-			Max Size: <input name="dc-max-cache-size" type="text" value="<?php echo get_option('dc_max_cache_size'); ?>"  style="width: 80px;" /> MB<br />
-			Rate Limit: <input name="dc-rate-limit" type="text" value="<?php echo get_option('dc_rate_limit'); ?>"  style="width: 80px;" /> (e.g. 50k or 44.6m)
-
-			<h3>Database File</h3>
-			<input name="dc-db-file" type="text" value="<?php echo get_option('dc_db_file'); ?>"  style="width: 90%;" disabled />
-
-			<h3>Cache Frequency</h3>
-			<p>How often should DeleteCity download videos from the sources?</p>
-			<ul>
-			<?php foreach($schedules as $slug => $schedule): ?>
-			<li>
-				<?php $checked = (get_option('dc_cache_schedule')==$slug) ? 'checked' : ''; ?>
-				<input type="radio" name="dc-cache-schedule" value="<?php echo $slug; ?>" <?php echo $checked; ?> /> 
-				<?php echo $schedule['display']; ?>
-			</li>
-			<?php endforeach; ?>
-			</ul>
-			
-			<h3>Post Frequency</h3>
-			<p>How often should DeleteCity post the videos it finds to your blog?</p>
-			<ul>
-			<?php foreach($schedules as $slug => $schedule): ?>
-			<li>
-				<?php $checked = (get_option('dc_post_schedule')==$slug) ? 'checked' : ''; ?>
-				<input type="radio" name="dc-post-schedule" value="<?php echo $slug; ?>" <?php echo $checked; ?> /> 
-				<?php echo $schedule['display']; ?>
-			</li>
-			<?php endforeach; ?>
-			</ul>
-			
-			<h3>Sources</h3>
-			<p>Check out <a href="http://code.google.com/apis/youtube/2.0/reference.html#Searching_for_videos">
-			this page for more information about source URLS</a>.</p>
-			<textarea name="dc-sources" style="width: 90%; height: 150px;"><?php echo $urls?></textarea>
-
-			<h3>Blacklist</h3>
-			<p>Videos containing these words in title or description will be skipped.</p>
-			<textarea name="dc-blacklist" style="width: 90%; height: 100px;"><?php echo get_option('dc_blacklist'); ?></textarea>
-			<p>
-				<input type="hidden" name="action" value="save_options" />
-				<input type="hidden" name="dc_do_action" value="true" />
-				<input type="submit" value="<?php _e('Save Changes') ?>" />
-			</p>
-		</form>
-		</div>
-	<?php
-	}	
+// --------------------------------------------------------------------------
+// LOGGING
+function dc_log($message) 
+{
+	global $dclogfile;
+	$loghandle = fopen($dclogfile, 'a');
+	fwrite($loghandle, "[deletecity] ".date("F j, Y, g:i a")." $message\n");
 }
 ?>

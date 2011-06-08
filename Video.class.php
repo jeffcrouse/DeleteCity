@@ -240,20 +240,20 @@ class Video {
 	{
 		global $dcdb;
 		
-		$videos = array();
-		$sql = "SELECT youtube_id FROM videos WHERE removed=1 AND date_posted=NULL";
+		$sql = "SELECT youtube_id FROM videos WHERE removed>0 AND date_posted IS NULL";
 	
 		$result = $dcdb->query($sql, SQLITE_ASSOC, $query_error); 
-		if ($query_error)
+		if($query_error)
 		{
 			throw new Exception( $query_error );
 		}	
-		if (!$result)
+		if(!$result)
 		{
 			throw new Exception("Impossible to execute query.");
 		}
 		
-		while ($row = $result->fetch(SQLITE_ASSOC))
+		$videos = array();
+		while($row = $result->fetch(SQLITE_ASSOC))
 		{
 			$videos[] = new Video( $row['youtube_id'] );
 		}
