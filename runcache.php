@@ -203,6 +203,7 @@ if($do_cache)
 			$video->title = $entry->title;
 			$video->content = $entry->content;
 			$video->author = $entry->author->name;
+			$video->feed = $url;
 			
 			$blacklisted = array();
 			foreach($blacklist as $word)

@@ -14,6 +14,7 @@ class Video {
 	var $seen_in_feed;
 	var $expired=false;
 	var $date_posted=NULL;
+	var $feed=NULL;
 	
 	// other
 	var $age=0;
@@ -204,7 +205,8 @@ class Video {
 		
 		if($this->in_db)
 		{
-			$sql=sprintf("UPDATE videos SET title='%s', content='%s', author='%s', removed=%d, expired=%d, date_posted=%d
+			$sql=sprintf("UPDATE videos SET title='%s', content='%s', author='%s', removed=%d, 
+				expired=%d, date_posted=%d, feed='%s'
 				WHERE youtube_id='%s'",
 				sqlite_escape_string($this->title),
 				sqlite_escape_string($this->content),
@@ -212,6 +214,7 @@ class Video {
 				$this->removed ? 1 : 0,
 				$this->expired ? 1 : 0,
 				$this->date_posted,
+				$this->feed,
 				sqlite_escape_string($this->youtube_id) );	
 			$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)
@@ -221,12 +224,13 @@ class Video {
 		}
 		else
 		{
-			$sql=sprintf("INSERT INTO videos (youtube_id, title, content, author, date_added, seen_in_feed) 
-				VALUES ('%s', '%s', '%s', '%s', DATETIME('now'), DATETIME('now'))",
+			$sql=sprintf("INSERT INTO videos (youtube_id, title, content, author, feed, date_added, seen_in_feed) 
+				VALUES ('%s', '%s', '%s', '%s', '%s', DATETIME('now'), DATETIME('now'))",
 				sqlite_escape_string($this->youtube_id),
 				sqlite_escape_string($this->title),
 				sqlite_escape_string($this->content),
-				sqlite_escape_string($this->author) );		
+				sqlite_escape_string($this->author),
+				sqlite_escape_string($this->feed) );		
 			$dcdb->query($sql, SQLITE_ASSOC, $query_error);
 			if ($query_error)
 			{
