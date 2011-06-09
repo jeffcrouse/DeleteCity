@@ -25,10 +25,10 @@ Copyright 2011  Jeff Crouse  (email : jeff@crouse.cc)
 
 
 Contents:
-1. admin_notices
-2. init
-3. wp-head
-4. wp-footer
+1. init
+2. wp-head
+3. wp-footer
+4. admin_notices
 5. cron_schedules
 6. deletecity_activate
 7. deletecity_deactivate
@@ -62,6 +62,55 @@ $runcache = dirname(__FILE__)."/runcache.php";
 $dc_plugin_dir = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__));
 Video::$cache_dir = get_option('dc_cache_dir', WP_CONTENT_DIR."/dc_cache");
 $max_age = 3;		// Videos will be deleted after 'max_age' days
+
+
+// --------------------------------------------
+add_action('init', 'dc_load');
+function dc_load()
+{
+	global $dc_plugin_dir;
+	wp_enqueue_style( 'dc-style', "{$dc_plugin_dir}styles.css"); 
+	
+	wp_enqueue_style( 'jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/smoothness/jquery-ui.css'); 
+	wp_enqueue_script( 'jw-player' , "{$dc_plugin_dir}mediaplayer-5.6/jwplayer.js");
+
+  	wp_deregister_script( 'jquery' );
+    wp_register_script( 'jquery', 'http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js');
+    wp_enqueue_script( 'jquery' );
+
+	wp_enqueue_script( 'jquery-ui-core' );
+	wp_enqueue_script( 'jquery-ui-dialog' );
+	
+	// declare the URL to the file that handles the AJAX request (wp-admin/admin-ajax.php)
+	wp_localize_script( 'jquery', 'MyAjax', array( 'ajaxurl' => admin_url( 'admin-ajax.php' ) ) );
+}
+
+
+// --------------------------------------------
+add_action('wp_head', 'dc_js_header' );
+function dc_js_header() // this is a PHP function
+{
+?>
+	<script type="text/javascript">
+	var $dc = jQuery.noConflict();
+	function dc_show_video(id)
+	{
+		var data = {action: 'dc_load_player', youtube_id: id};
+		$dc("#dc-video-box").load(MyAjax.ajaxurl, data, function(result) {
+			$dc("#dc-video-box").dialog({width: 680, height:530, modal: true});
+		});
+	}
+	</script>
+<?php
+} 
+
+// --------------------------------------------
+add_action('wp_footer', 'dc_footer' );
+function dc_footer() // this is a PHP function
+{
+	?><div id="dc-video-box"></div><?php
+} 
+
 
 
 // --------------------------------------------------------------------------
@@ -100,54 +149,6 @@ function deletecity_warning()
 		</div>
 	<?php endif;
 }
-
-
-
-// --------------------------------------------
-add_action('init', 'dc_load');
-function dc_load()
-{
-	global $dc_plugin_dir;
-	wp_enqueue_style( 'dc-style', "{$dc_plugin_dir}styles.css"); 
-	
-	wp_enqueue_style( 'jquery-style', 'http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/smoothness/jquery-ui.css'); 
-	wp_enqueue_script( 'jw-player' , "{$dc_plugin_dir}mediaplayer-5.6/jwplayer.js");
-
-  	wp_deregister_script( 'jquery' );
-    wp_register_script( 'jquery', 'http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js');
-    wp_enqueue_script( 'jquery' );
-
-	wp_enqueue_script( 'jquery-ui-core' );
-	wp_enqueue_script( 'jquery-ui-dialog' );
-	
-	// declare the URL to the file that handles the AJAX request (wp-admin/admin-ajax.php)
-	wp_localize_script( 'jquery', 'MyAjax', array( 'ajaxurl' => admin_url( 'admin-ajax.php' ) ) );
-}
-
-
-// --------------------------------------------
-add_action('wp_head', 'dc_js_header' );
-function dc_js_header() // this is a PHP function
-{
-?>
-	<script type="text/javascript">
-	function dc_show_video(id)
-	{
-		var data = {action: 'dc_load_player', youtube_id: id};
-		$("#dc-video-box").load(MyAjax.ajaxurl, data, function(result) {
-			$("#dc-video-box").dialog({width: 680, height:530, modal: true});
-		});
-	}
-	</script>
-<?php
-} 
-
-// --------------------------------------------
-add_action('wp_footer', 'dc_footer' );
-function dc_footer() // this is a PHP function
-{
-	?><div id="dc-video-box"></div><?php
-} 
 
 
 // --------------------------------------------------------------------------
@@ -467,8 +468,9 @@ if ( is_admin() )
 			
 
 			<script type="text/javascript">
-			$.ajaxSetup({cache:false});
-			$('input[name=filter]').click(function(){
+			var $dc = jQuery.noConflict();
+			$dc.ajaxSetup({cache:false});
+			$dc('input[name=filter]').click(function(){
 				current_page = 0;
 				dc_refresh();
 			});
@@ -479,9 +481,9 @@ if ( is_admin() )
 			{
 				var filter = $('input[name=filter]:checked').val();
 				var data = {action: 'dc_get_vids', dc_page: current_page, dc_filter: filter};
-				$("#videos").load(ajaxurl, data);
-				$("#log").load("<?php echo $dc_plugin_dir; ?>deletecity.log", function() {
-					$("#log").scrollTop($("#log")[0].scrollHeight);
+				$dc("#videos").load(ajaxurl, data);
+				$dc("#log").load("<?php echo $dc_plugin_dir; ?>deletecity.log", function() {
+					$dc("#log").scrollTop($("#log")[0].scrollHeight);
 				});
 			}
 			function dc_set_page(new_page)
@@ -491,15 +493,15 @@ if ( is_admin() )
 			}
 			function dc_delete_video(id)
 			{
-				var filter = $('input[name=filter]:checked').val();
+				var filter = $dc('input[name=filter]:checked').val();
 				var data = {action: 'dc_get_vids', dc_page: current_page, dc_filter: filter, dc_delete: id};
-				$("#videos").load(ajaxurl, data);
+				$dc("#videos").load(ajaxurl, data);
 			}
 			function dc_show_video(id)
 			{
 				var data = {action: 'dc_load_player', youtube_id: id};
-				$("#video-player").load(ajaxurl, data, function(result) {
-					$("#video-player").dialog({width: 680, height:530, modal: true});
+				$dc("#video-player").load(ajaxurl, data, function(result) {
+					$dc("#video-player").dialog({width: 680, height:530, modal: true});
 				});
 			}
 			dc_refresh();
