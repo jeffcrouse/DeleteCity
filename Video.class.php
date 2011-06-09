@@ -139,7 +139,9 @@ class Video {
 	function mark_as_expired()
 	{
 		global $dcdb;
-		if(unlink($this->vid_path))
+		@unlink($this->vid_path);
+		
+		if(!file_exists($this->vid_path))
 		{
 			$sql="UPDATE videos SET expired=1 WHERE youtube_id='{$this->youtube_id}'";
 			if (!$dcdb->queryExec($sql, $error))
@@ -265,14 +267,20 @@ class Video {
 	{
 		global $dcdb;
 		$video = new Video($youtube_id);
-		$video->mark_as_expired();
-		
-		$sql="DELETE FROM videos WHERE youtube_id='{$youtube_id}'";
-		$query = $dcdb->queryExec($sql, $error);
-		if (!$query) 
+		@unlink($video->vid_path);
+		if(!file_exists($video->vid_path))
 		{
-			throw new Exception( $error );
-		} 
+			$sql="DELETE FROM videos WHERE youtube_id='{$youtube_id}'";
+			$query = $dcdb->queryExec($sql, $error);
+			if (!$query) 
+			{
+				throw new Exception( $error );
+			} 
+		}
+		else
+		{
+			throw new Exception("Could not delete {$this->youtube_id}.  Check permissions.");
+		}
 	}
 }
 ?>

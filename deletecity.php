@@ -190,7 +190,7 @@ function deletecity_activate()
 	
 	if(!get_option('dc_blacklist'))
 	{
-		add_option('dc_blacklist',  "sexy, milf, whores, porn, xxx, pokemon, anal, shemale, fetish");
+		add_option('dc_blacklist',  "amateur, anal, ass, bbw, blackjackbreast, cock, cumming, cunt, dick, dildo, erotic, facial, femdom, fetish, fisting, fuck, fucking, hardcore, horny, incest, jizz, lesbians, lesbiens, masturbation, milf, nude, orgasm, penis, pokemon, porn, pussy, sex, sexy, shemale, shit, squirt, sybian, tits, tranny, whores, xxx");
 	}
 	
 	if(!get_option('dc_max_cache_size'))
@@ -366,32 +366,43 @@ if ( is_admin() )
 				post_removed_videos();
 				break;
 			case 'save_options':
-				$dcdb->queryExec("DELETE FROM sources;", $query_error);
-				if ($query_error)
-				{
-					die("Error: $query_error");
-				}
-				$sources = explode("\n", $_REQUEST['dc-sources']);
-				foreach($sources as $source)
-				{
-					$source=trim($source);
-					if(empty($source))
-					{
-						continue;
-					}
-					$source = sqlite_escape_string($source);
-					$dcdb->queryExec("INSERT INTO sources (feed_url) VALUES('$source');", $query_error);
+				deletecity_deactivate();
+			
+					$dcdb->queryExec("DELETE FROM sources;", $query_error);
 					if ($query_error)
 					{
 						die("Error: $query_error");
 					}
-				}
-				update_option('dc_cache_schedule', $_REQUEST['dc-cache-schedule']);
-				update_option('dc_post_schedule',  $_REQUEST['dc-post-schedule']);
-				update_option('dc_blacklist',  $_REQUEST['dc-blacklist']);
-				update_option('dc_max_cache_size',  $_REQUEST['dc-max-cache-size']);
-				update_option('dc_rate_limit',  $_REQUEST['dc-rate-limit']);
-				deletecity_deactivate();
+					$sources = explode("\n", $_REQUEST['dc-sources']);
+					foreach($sources as $source)
+					{
+						$source=trim($source);
+						if(empty($source))
+						{
+							continue;
+						}
+						$source = sqlite_escape_string($source);
+						$dcdb->queryExec("INSERT INTO sources (feed_url) VALUES('$source');", $query_error);
+						if ($query_error)
+						{
+							die("Error: $query_error");
+						}
+					}
+					update_option('dc_cache_schedule', $_REQUEST['dc-cache-schedule']);
+					update_option('dc_post_schedule',  $_REQUEST['dc-post-schedule']);
+					update_option('dc_max_cache_size',  $_REQUEST['dc-max-cache-size']);
+					update_option('dc_rate_limit',  $_REQUEST['dc-rate-limit']);
+									
+					$blacklist = preg_split("/[\s]*[,][\s]*|[\n]/", $_REQUEST['dc-blacklist']);
+					for($i=0; $i<count($blacklist); $i++)
+					{
+						$blacklist[$i] = trim($blacklist[$i]);
+					}
+					$blacklist = array_unique($blacklist);
+					sort($blacklist);
+					$blacklist = implode(", ", $blacklist);
+					update_option('dc_blacklist',  $blacklist);
+				
 				deletecity_activate();
 				break;
 		}
@@ -614,7 +625,7 @@ if ( is_admin() )
 			<div class="video-title" style="font-size: 18px; font-weight: bold;"><?php echo $video->title; ?></div>
 			<p>by <a href="http://www.youtube.com/user/<?php echo $video->author; ?>" target="_blank"><?php echo $video->author; ?></a></p>
 			<div id="video-<?php echo $youtube_id; ?>">Loading the player ...</div>
-			[<a href="http://www.youtube.com/watch?v=<?php echo $video->youtube_id; ?>">original URL</a>]
+			[<a href="http://www.youtube.com/watch?v=<?php echo $video->youtube_id; ?>" target="_blank">original URL</a>]
 			<p><?php echo $video->content; ?></p>
 			<script type="text/javascript"> 
 			jwplayer("video-<?php echo $youtube_id; ?>").setup({
@@ -642,7 +653,11 @@ if ( is_admin() )
 	
 		if(isset($_POST['dc_delete']))
 		{
-			Video::delete( $_POST['dc_delete'] );
+			try {
+				Video::delete( $_POST['dc_delete'] );
+			} catch(Exception $e) {
+				print "Couldn't delete '{$_POST['dc_delete']}'.  ".$e->getMessage();
+			}
 		}
 		
 		$page = $_POST['dc_page'];

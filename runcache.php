@@ -204,18 +204,19 @@ if($do_cache)
 			$video->content = $entry->content;
 			$video->author = $entry->author->name;
 			
-			$blacklisted = false;
+			$blacklisted = array();
 			foreach($blacklist as $word)
 			{
-				if(stristr($video->title, $word) || stristr($video->content, $word))
-				{
-					print "\tStatus: [$cur_vid/$num_vids] \"$word\" found in video \"{$video->title}\". Skipping\n";
-					$blacklisted = true;
-				}
+				if(stristr($video->title, $word) || stristr($video->content, $word)) $blacklisted[] = $word;
 			}
 			
 			// Skip any videos that contain a blacklisted word.
-			if(!$blacklisted)
+			if(count($blacklisted) > 0)
+			{
+				$words = implode(", ", $blacklisted);
+				print "\tStatus: [$cur_vid/$num_vids] $words found in video \"{$video->title}\" ({$video->youtube_id}). Skipping\n";
+			}
+			else
 			{
 				// If we need to download the video, do it!
 				if(!$video->expired && !file_exists($video->vid_path))
